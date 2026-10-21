@@ -30,14 +30,17 @@ export function Sidebar({
   onSelect,
   topics,
   counts,
-  onCollapse,
+  collapsed = false,
+  onToggle,
 }: {
   view: View
   onSelect: (v: View) => void
   topics: Topic[]
   counts: { today: number; overdue: number; byTopic: Record<string, number> }
-  /** Desktop only: shows a collapse button in the header. */
-  onCollapse?: () => void
+  /** Desktop only: icon rail instead of the full sidebar. */
+  collapsed?: boolean
+  /** Desktop only: shows the collapse / expand control. */
+  onToggle?: () => void
 }) {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState("")
@@ -64,14 +67,21 @@ export function Sidebar({
     <button
       key={v}
       onClick={() => onSelect(v)}
+      title={collapsed ? label : undefined}
+      aria-label={collapsed ? label : undefined}
       className={cn(
-        "flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground",
+        "relative flex h-9 w-full shrink-0 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground",
+        collapsed && "justify-center px-0",
         view === v && "bg-muted font-medium text-foreground"
       )}
     >
       {icon}
-      <span className="truncate">{label}</span>
-      {count ? (
+      {collapsed ? (
+        alert && <span className="absolute top-1.5 right-2 size-1.5 rounded-full bg-destructive" />
+      ) : (
+        <span className="truncate">{label}</span>
+      )}
+      {!collapsed && count ? (
         <span className={cn("ml-auto text-xs tabular-nums", alert ? "font-medium text-destructive" : "text-muted-foreground")}>
           {count}
         </span>
@@ -80,28 +90,41 @@ export function Sidebar({
   )
 
   return (
-    <div className="flex h-full flex-col gap-0.5 p-3">
-      <div className="mb-3 flex h-8 items-center gap-1.5 pl-2 text-sm font-semibold">
-        <Logo />
-        <span className="truncate">MCP Enabled Todo List</span>
-        {onCollapse && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="ml-auto shrink-0 text-muted-foreground"
-            onClick={onCollapse}
-            aria-label="Hide sidebar"
-            title="Hide sidebar (⌘B)"
-          >
-            <PanelLeftCloseIcon />
-          </Button>
-        )}
-      </div>
+    <div className={cn("flex h-full flex-col gap-0.5", collapsed ? "items-center p-2" : "p-3")}>
+      {collapsed ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mb-3 shrink-0"
+          onClick={onToggle}
+          aria-label="Show sidebar"
+          title="Show sidebar (⌘B)"
+        >
+          <Logo />
+        </Button>
+      ) : (
+        <div className="mb-3 flex h-9 items-center gap-1.5 pl-2 text-sm font-semibold">
+          <Logo />
+          <span className="truncate">MCP Enabled Todo List</span>
+          {onToggle && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="ml-auto shrink-0 text-muted-foreground"
+              onClick={onToggle}
+              aria-label="Hide sidebar"
+              title="Hide sidebar (⌘B)"
+            >
+              <PanelLeftCloseIcon />
+            </Button>
+          )}
+        </div>
+      )}
       {item("today", <SunIcon className="size-4" />, "Today", counts.today, counts.overdue > 0)}
       {item("upcoming", <CalendarIcon className="size-4" />, "Upcoming")}
       {item("all", <InboxIcon className="size-4" />, "All tasks")}
       <Separator className="my-2" />
-      <div className="flex min-h-0 flex-col gap-0.5 overflow-y-auto">
+      <div className="flex min-h-0 w-full flex-col gap-0.5 overflow-y-auto">
         {topics.map((t) =>
           item(
             `topic:${t.id}`,
@@ -110,7 +133,7 @@ export function Sidebar({
             counts.byTopic[t.id]
           )
         )}
-        {adding ? (
+        {adding && !collapsed ? (
           <form onSubmit={addTopic} className="px-1 py-0.5">
             <Input
               autoFocus
@@ -127,17 +150,23 @@ export function Sidebar({
             onClick={() => {
               handled.current = false
               setAdding(true)
+              if (collapsed) onToggle?.()
             }}
-            className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+            title={collapsed ? "New topic" : undefined}
+            aria-label="New topic"
+            className={cn(
+              "flex h-9 shrink-0 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground",
+              collapsed && "justify-center px-0"
+            )}
           >
             <PlusIcon className="size-4" />
-            New topic
+            {!collapsed && "New topic"}
           </button>
         )}
       </div>
-      <div className="mt-auto flex items-center gap-1 pt-3">
-        <ReminderToggle />
-        <ThemeToggle />
+      <div className={cn("mt-auto flex gap-1 pt-3", collapsed ? "flex-col items-center" : "w-full items-center")}>
+        <ReminderToggle compact={collapsed} />
+        <ThemeToggle className={collapsed ? undefined : "ml-auto"} />
       </div>
     </div>
   )
@@ -148,13 +177,13 @@ export function Logo({ className }: { className?: string }) {
   return <img src="/logo.png" alt="" width={20} height={20} className={cn("size-5 shrink-0", className)} />
 }
 
-function ThemeToggle() {
+function ThemeToggle({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme()
   return (
     <Button
       variant="ghost"
       size="icon-sm"
-      className="ml-auto text-muted-foreground"
+      className={cn("text-muted-foreground", className)}
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       aria-label="Toggle dark mode"
     >
@@ -172,7 +201,7 @@ const PUSH_LABEL: Record<PushState, string> = {
   "needs-install": "Add to Home Screen for reminders",
 }
 
-function ReminderToggle() {
+function ReminderToggle({ compact }: { compact?: boolean }) {
   const [state, setState] = useState<PushState | null>(null)
   const [busy, setBusy] = useState(false)
   useEffect(() => {
@@ -183,15 +212,18 @@ function ReminderToggle() {
   return (
     <Button
       variant="ghost"
-      size="sm"
+      size={compact ? "icon-sm" : "sm"}
       disabled={busy || state === "unsupported"}
       className={cn("min-w-0 justify-start text-xs", on ? "text-muted-foreground" : "text-amber-700 dark:text-amber-400")}
+      aria-label={PUSH_LABEL[state]}
       title={
         state === "needs-install"
           ? "On iPhone: tap Share → Add to Home Screen, then open the app from there."
           : state === "denied"
             ? "Allow notifications for this site in your browser settings."
-            : undefined
+            : compact
+              ? PUSH_LABEL[state]
+              : undefined
       }
       onClick={async () => {
         if (state !== "on" && state !== "off") return
@@ -204,7 +236,7 @@ function ReminderToggle() {
       }}
     >
       {on ? <BellRingIcon /> : <BellOffIcon />}
-      <span className="truncate">{PUSH_LABEL[state]}</span>
+      {!compact && <span className="truncate">{PUSH_LABEL[state]}</span>}
     </Button>
   )
 }
