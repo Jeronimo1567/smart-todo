@@ -126,4 +126,17 @@
   html {
     @apply font-sans;
     }
+  /* iOS Safari gives date/time inputs a fixed intrinsic width and centered text;
+     make them behave like normal text fields. */
+  input[type="date"],
+  input[type="time"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    display: block;
+  }
+  input::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+  }
 }

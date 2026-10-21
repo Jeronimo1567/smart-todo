@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { haptic } from "@/lib/haptics"
 import { DAY, byDue, dayLabel, isOverdue, startOfToday } from "@/lib/format"
 import { registerSW } from "@/lib/push"
-import { useStore } from "@/lib/store"
+import { saveTask, useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import type { Task, Topic } from "@/shared/types"
 
@@ -49,6 +49,35 @@ function usePref<T extends string>(key: string, fallback: T) {
     [key]
   )
   return [value, set] as const
+}
+
+/** Deletes the completed tasks shown in this list. Two taps so it can't happen by accident. */
+function ClearCompleted({ tasks }: { tasks: Task[] }) {
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    if (!armed) return
+    const t = setTimeout(() => setArmed(false), 3000)
+    return () => clearTimeout(t)
+  }, [armed])
+  return (
+    <button
+      onClick={() => {
+        if (!armed) {
+          haptic("light")
+          return setArmed(true)
+        }
+        haptic("warning")
+        for (const t of tasks) saveTask(t.id, { deleted: true })
+        setArmed(false)
+      }}
+      className={cn(
+        "rounded-md px-2 py-2.5 text-sm text-muted-foreground hover:text-foreground md:py-1 md:text-xs",
+        armed && "font-medium text-destructive hover:text-destructive"
+      )}
+    >
+      {armed ? `Tap again to clear ${tasks.length}` : "Clear all"}
+    </button>
+  )
 }
 
 export function TodoApp() {
@@ -241,7 +270,7 @@ export function TodoApp() {
 
         <div className="flex-1 overflow-y-auto px-2 pb-[max(env(safe-area-inset-bottom),1.5rem)] md:px-6 md:pb-6">
           {hydrated && empty && (
-            <p className="px-3 py-10 text-center text-sm text-muted-foreground">
+            <p className="hidden px-3 py-10 text-center text-sm text-muted-foreground md:block">
               {view === "today" ? "Nothing due today. Nice." : done.length ? "All done." : "No tasks here yet."}
             </p>
           )}
@@ -273,13 +302,16 @@ export function TodoApp() {
           <AddTaskRow key={view} {...addProps} className="md:hidden" />
           {done.length > 0 && (
             <section className="mt-2">
-              <button
-                onClick={() => setShowDone(!showDone)}
-                className="flex items-center gap-1 px-2 py-2.5 text-sm font-medium tracking-wide text-muted-foreground uppercase hover:text-foreground md:py-1 md:text-xs"
-              >
-                <ChevronRightIcon className={cn("size-3.5 transition-transform", showDone && "rotate-90")} />
-                Completed ({done.length})
-              </button>
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowDone(!showDone)}
+                  className="flex items-center gap-1 px-2 py-2.5 text-sm font-medium tracking-wide text-muted-foreground uppercase hover:text-foreground md:py-1 md:text-xs"
+                >
+                  <ChevronRightIcon className={cn("size-3.5 transition-transform", showDone && "rotate-90")} />
+                  Completed ({done.length})
+                </button>
+                <ClearCompleted tasks={done} />
+              </div>
               {showDone &&
                 done.map((t) => (
                   <TaskRow

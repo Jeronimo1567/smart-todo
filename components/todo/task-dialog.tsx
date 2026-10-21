@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { haptic } from "@/lib/haptics"
-import { fromInputs, toDateInput, toTimeInput } from "@/lib/format"
+import { fromInputs, startOfToday, toDateInput, toTimeInput } from "@/lib/format"
 import { saveTask } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import type { Task, TaskPatch, Topic } from "@/shared/types"
@@ -28,6 +28,15 @@ export function TaskDialog({ task, topics, onClose }: { task: Task | null; topic
   )
 }
 
+/** iOS shows nothing in an empty date/time field, so label it ourselves. */
+function Placeholder({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-base text-muted-foreground md:text-sm">
+      {children}
+    </span>
+  )
+}
+
 function Editor({
   task,
   topics,
@@ -44,6 +53,7 @@ function Editor({
   const [topicId, setTopicId] = useState(task.topicId ?? "")
   const [date, setDate] = useState(toDateInput(task.dueAt))
   const [time, setTime] = useState(toTimeInput(task.dueAt, task.allDay))
+  const [ios] = useState(() => /iP(hone|ad|od)/.test(navigator.userAgent))
   const [important, setImportant] = useState(task.important)
 
   // Only send what changed, so remote edits to other fields aren't clobbered.
@@ -115,16 +125,32 @@ function Editor({
           <BellRingIcon />
           {important ? "Important" : "Not important"}
         </Button>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={field} aria-label="Due date" />
-        <div className="flex gap-1">
-          <input
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className={field}
-            aria-label="Due time"
-            disabled={!date}
-          />
+        {/* Date, then time; on narrow phones the time wraps to its own line instead of squeezing the date. */}
+        <div className="col-span-2 flex flex-wrap gap-2">
+          <label className="relative min-w-0 flex-1 basis-44">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className={field}
+              aria-label="Due date"
+            />
+            {ios && !date && <Placeholder>Due date</Placeholder>}
+          </label>
+          <label className="relative min-w-0 flex-1 basis-28">
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => {
+                setTime(e.target.value)
+                // Picking a time without a date means today.
+                if (e.target.value && !date) setDate(toDateInput(startOfToday()))
+              }}
+              className={field}
+              aria-label="Due time"
+            />
+            {ios && !time && <Placeholder>{date ? "All day" : "Time"}</Placeholder>}
+          </label>
           {date && (
             <Button
               type="button"
@@ -144,7 +170,7 @@ function Editor({
       </div>
       {important && (
         <p className="-mt-1 text-xs text-muted-foreground">
-          Important tasks remind you 1 day, 3 h and 1 h before, then every hour once overdue.
+          Important tasks remind you 1 day, 3 h and 1 h before, then keep reminding you while overdue.
         </p>
       )}
 
