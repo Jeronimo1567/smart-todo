@@ -35,6 +35,7 @@ import {
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
+import { haptic } from "@/lib/haptics"
 import { DOT, TEXT } from "@/lib/format"
 import { saveTopic } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -129,7 +130,10 @@ export function TopicIconPicker({
           {TOPIC_COLORS.map((c) => (
             <button
               key={c}
-              onClick={() => saveTopic(topic.id, { color: c })}
+              onClick={() => {
+                haptic("selection")
+                saveTopic(topic.id, { color: c })
+              }}
               className={cn(
                 "size-6 rounded-full ring-offset-2 ring-offset-popover",
                 DOT[c],
@@ -145,7 +149,10 @@ export function TopicIconPicker({
           {TOPIC_ICONS.map((i) => (
             <button
               key={i}
-              onClick={() => saveTopic(topic.id, { icon: i })}
+              onClick={() => {
+                haptic("selection")
+                saveTopic(topic.id, { icon: i })
+              }}
               className={cn(
                 "flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground",
                 topic.icon === i && cn("bg-muted", TEXT[topic.color])

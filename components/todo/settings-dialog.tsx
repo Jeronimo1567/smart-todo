@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
+import { haptic, hapticsEnabled, isTouchDevice, setHapticsEnabled } from "@/lib/haptics"
 import { type PushState, disablePush, enablePush, getPushState } from "@/lib/push"
 import { logout } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -62,6 +63,8 @@ function SettingsBody() {
   const [copied, setCopied] = useState<string | null>(null)
   const [confirmRotate, setConfirmRotate] = useState(false)
   const { theme, setTheme } = useTheme()
+  const [touch] = useState(isTouchDevice)
+  const [haptics, setHaptics] = useState(hapticsEnabled)
 
   useEffect(() => {
     fetch("/api/settings", { cache: "no-store" })
@@ -72,6 +75,7 @@ function SettingsBody() {
 
   // Apply instantly, save in the background.
   function update(patch: Partial<Prefs>) {
+    haptic("selection")
     setS((prev) => (prev ? { ...prev, ...patch } : prev))
     fetch("/api/settings", {
       method: "POST",
@@ -107,6 +111,7 @@ function SettingsBody() {
             checked={push === "on"}
             disabled={busy || !push || (push !== "on" && push !== "off")}
             onCheckedChange={async (on) => {
+              haptic("selection")
               setBusy(true)
               try {
                 setPush(await (on ? enablePush() : disablePush()))
@@ -244,7 +249,10 @@ function SettingsBody() {
           {(["light", "dark", "system"] as const).map((t) => (
             <button
               key={t}
-              onClick={() => setTheme(t)}
+              onClick={() => {
+                haptic("selection")
+                setTheme(t)
+              }}
               className={cn(
                 "h-9 rounded-md text-sm capitalize text-muted-foreground md:h-8",
                 theme === t && "bg-background text-foreground shadow-sm dark:bg-input/40"
@@ -255,6 +263,22 @@ function SettingsBody() {
           ))}
         </div>
       </Section>
+
+      {touch && (
+        <Section title="Feel">
+          <Row label="Haptic feedback" hint="Little vibrations when you tap">
+            <Switch
+              checked={haptics}
+              onCheckedChange={(on) => {
+                setHapticsEnabled(on)
+                setHaptics(on)
+                haptic("medium")
+              }}
+              aria-label="Haptic feedback"
+            />
+          </Row>
+        </Section>
+      )}
 
       <Section title="Account">
         <Row label="Time zone" hint="Set automatically from this device">

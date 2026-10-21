@@ -4,6 +4,7 @@ import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { haptic } from "@/lib/haptics"
 import { login } from "@/lib/store"
 
 import { Logo } from "./sidebar"
@@ -23,6 +24,7 @@ export function Login() {
           const ok = await login(password)
           setBusy(false)
           setError(!ok)
+          if (!ok) haptic("error")
         }}
       >
         <div className="mb-2 flex items-center gap-2 text-lg font-semibold">

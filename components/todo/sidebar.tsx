@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { haptic } from "@/lib/haptics"
 import { getPushState } from "@/lib/push"
 import { saveTopic } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -67,13 +68,17 @@ export function Sidebar({
       color: TOPIC_COLORS[topics.length % TOPIC_COLORS.length],
       position: Math.max(0, ...topics.map((t) => t.position)) + 1,
     })
+    haptic("success")
     onSelect(`topic:${id}`)
   }
 
   const item = (v: View, icon: React.ReactNode, label: string, count?: number, alert?: boolean) => (
     <button
       key={v}
-      onClick={() => onSelect(v)}
+      onClick={() => {
+        haptic("selection")
+        onSelect(v)
+      }}
       title={collapsed ? label : undefined}
       aria-label={label}
       className={cn(ROW, view === v && "bg-muted font-medium text-foreground")}
@@ -139,7 +144,10 @@ export function Sidebar({
               role="button"
               tabIndex={0}
               aria-label={t.name}
-              onClick={() => onSelect(v)}
+              onClick={() => {
+                haptic("selection")
+                onSelect(v)
+              }}
               onKeyDown={(e) => {
                 if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
                   e.preventDefault()

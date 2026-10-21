@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
+import { haptic } from "@/lib/haptics"
 import { DAY, byDue, dayLabel, isOverdue, startOfToday } from "@/lib/format"
 import { registerSW } from "@/lib/push"
 import { useStore } from "@/lib/store"
@@ -203,7 +204,10 @@ export function TodoApp() {
             variant="ghost"
             size="icon"
             className="size-11 md:hidden [&_svg:not([class*='size-'])]:size-6"
-            onClick={() => setMenuOpen(true)}
+            onClick={() => {
+              haptic("light")
+              setMenuOpen(true)
+            }}
             aria-label="Open lists"
           >
             <MenuIcon />

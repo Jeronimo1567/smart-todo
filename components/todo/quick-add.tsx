@@ -4,6 +4,7 @@ import { BellRingIcon, CalendarIcon, PlusIcon } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { Input } from "@/components/ui/input"
+import { haptic } from "@/lib/haptics"
 import { dueLabel, startOfToday } from "@/lib/format"
 import { type Parsed, parseQuickAdd } from "@/lib/parse"
 import { addTask } from "@/lib/store"
@@ -25,6 +26,7 @@ function useQuickAdd({ topics, defaultTopicId, defaultToday }: Props) {
   const parsed = useMemo(() => (value.trim() ? parseQuickAdd(value, topics) : null), [value, topics])
   function submit() {
     if (!parsed) return
+    haptic(parsed.important ? "medium" : "light")
     const due =
       parsed.dueAt === null && defaultToday
         ? { dueAt: startOfToday(), allDay: true }
@@ -100,7 +102,10 @@ export function AddTaskRow(props: Props) {
   if (!editing) {
     return (
       <button
-        onClick={() => setEditing(true)}
+        onClick={() => {
+          haptic("selection")
+          setEditing(true)
+        }}
         className={cn(
           "flex w-full items-center gap-3 rounded-lg px-2 py-3 text-base text-muted-foreground active:bg-muted",
           props.className

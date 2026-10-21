@@ -5,6 +5,7 @@ import { memo } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { haptic } from "@/lib/haptics"
 import { dueLabel, dueTone, type Tone } from "@/lib/format"
 import { saveTask } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -34,7 +35,10 @@ export const TaskRow = memo(function TaskRow({
     <div className="group flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-muted/60 md:py-2">
       <Checkbox
         checked={done}
-        onCheckedChange={(v) => saveTask(task.id, { doneAt: v ? Date.now() : null })}
+        onCheckedChange={(v) => {
+          haptic(v ? "success" : "light")
+          saveTask(task.id, { doneAt: v ? Date.now() : null })
+        }}
         className="size-6 rounded-full md:size-5"
         aria-label={done ? "Mark not done" : "Mark done"}
       />

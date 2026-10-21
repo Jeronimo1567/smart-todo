@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { haptic } from "@/lib/haptics"
 import { fromInputs, toDateInput, toTimeInput } from "@/lib/format"
 import { saveTask } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -104,7 +105,10 @@ function Editor({
         <Button
           type="button"
           variant="outline"
-          onClick={() => setImportant(!important)}
+          onClick={() => {
+            haptic(important ? "light" : "rigid")
+            setImportant(!important)
+          }}
           aria-pressed={important}
           className={cn("h-10", important && "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400")}
         >
@@ -145,12 +149,18 @@ function Editor({
       )}
 
       <div className="flex items-center justify-between pt-1">
-        <Button type="button" variant="destructive" onClick={() => commit({ deleted: true })}>
+        <Button type="button" variant="destructive" onClick={() => {
+            haptic("warning")
+            commit({ deleted: true })
+          }}>
           <Trash2Icon />
           Delete
         </Button>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={() => commit({ doneAt: task.doneAt ? null : Date.now() })}>
+          <Button type="button" variant="outline" onClick={() => {
+              haptic(task.doneAt ? "light" : "success")
+              commit({ doneAt: task.doneAt ? null : Date.now() })
+            }}>
             <CheckIcon />
             {task.doneAt ? "Reopen" : "Done"}
           </Button>
