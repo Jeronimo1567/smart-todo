@@ -5,7 +5,7 @@ import {
   BellRingIcon,
   CalendarIcon,
   InboxIcon,
-  ListTodoIcon,
+  PanelLeftCloseIcon,
   MoonIcon,
   PlusIcon,
   SunIcon,
@@ -30,11 +30,14 @@ export function Sidebar({
   onSelect,
   topics,
   counts,
+  onCollapse,
 }: {
   view: View
   onSelect: (v: View) => void
   topics: Topic[]
   counts: { today: number; overdue: number; byTopic: Record<string, number> }
+  /** Desktop only: shows a collapse button in the header. */
+  onCollapse?: () => void
 }) {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState("")
@@ -78,9 +81,21 @@ export function Sidebar({
 
   return (
     <div className="flex h-full flex-col gap-0.5 p-3">
-      <div className="mb-3 flex items-center gap-2 px-2.5 pt-1 text-sm font-semibold">
-        <ListTodoIcon className="size-4 shrink-0" />
+      <div className="mb-3 flex h-8 items-center gap-1.5 pl-2 text-sm font-semibold">
+        <Logo />
         <span className="truncate">MCP Enabled Todo List</span>
+        {onCollapse && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="ml-auto shrink-0 text-muted-foreground"
+            onClick={onCollapse}
+            aria-label="Hide sidebar"
+            title="Hide sidebar (⌘B)"
+          >
+            <PanelLeftCloseIcon />
+          </Button>
+        )}
       </div>
       {item("today", <SunIcon className="size-4" />, "Today", counts.today, counts.overdue > 0)}
       {item("upcoming", <CalendarIcon className="size-4" />, "Upcoming")}
@@ -126,6 +141,11 @@ export function Sidebar({
       </div>
     </div>
   )
+}
+
+export function Logo({ className }: { className?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element -- static export, tiny file
+  return <img src="/logo.png" alt="" width={20} height={20} className={cn("size-5 shrink-0", className)} />
 }
 
 function ThemeToggle() {

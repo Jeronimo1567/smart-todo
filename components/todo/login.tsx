@@ -1,11 +1,12 @@
 "use client"
 
-import { ListTodoIcon } from "lucide-react"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { login } from "@/lib/store"
+
+import { Logo } from "./sidebar"
 
 export function Login() {
   const [password, setPassword] = useState("")
@@ -25,7 +26,7 @@ export function Login() {
         }}
       >
         <div className="mb-2 flex items-center gap-2 text-lg font-semibold">
-          <ListTodoIcon className="size-5" />
+          <Logo className="size-6" />
           MCP Enabled Todo List
         </div>
         <Input

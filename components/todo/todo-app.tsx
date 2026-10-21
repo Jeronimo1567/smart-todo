@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRightIcon, MenuIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PencilIcon } from "lucide-react"
+import { ChevronRightIcon, MenuIcon, PencilIcon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,7 @@ import type { Task, Topic } from "@/shared/types"
 
 import { Login } from "./login"
 import { QuickAdd } from "./quick-add"
-import { Sidebar, type View } from "./sidebar"
+import { Logo, Sidebar, type View } from "./sidebar"
 import { TaskDialog } from "./task-dialog"
 import { TaskRow } from "./task-row"
 import { TopicDialog } from "./topic-dialog"
@@ -170,16 +170,19 @@ export function TodoApp() {
     />
   )
   const sidebar = <Sidebar view={view} onSelect={select} topics={topics} counts={counts} />
+  const isCollapsed = collapsed === "1"
 
   return (
     <div className="flex h-dvh">
       <aside
         className={cn(
           "hidden shrink-0 overflow-hidden border-r bg-muted/30 transition-[width] duration-200 md:block",
-          collapsed === "1" ? "w-0 border-r-0" : "w-60"
+          isCollapsed ? "w-0 border-r-0" : "w-64"
         )}
       >
-        <div className="h-full w-60">{sidebar}</div>
+        <div className="h-full w-64">
+          <Sidebar view={view} onSelect={select} topics={topics} counts={counts} onCollapse={toggleSidebar} />
+        </div>
       </aside>
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
@@ -194,16 +197,18 @@ export function TodoApp() {
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMenuOpen(true)} aria-label="Open lists">
             <MenuIcon />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="-ml-2 hidden text-muted-foreground md:inline-flex"
-            onClick={toggleSidebar}
-            aria-label={collapsed === "1" ? "Show sidebar" : "Hide sidebar"}
-            title={`${collapsed === "1" ? "Show" : "Hide"} sidebar (⌘B)`}
-          >
-            {collapsed === "1" ? <PanelLeftOpenIcon /> : <PanelLeftCloseIcon />}
-          </Button>
+          {isCollapsed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="-ml-2.5 hidden md:inline-flex"
+              onClick={toggleSidebar}
+              aria-label="Show sidebar"
+              title="Show sidebar (⌘B)"
+            >
+              <Logo />
+            </Button>
+          )}
           <h1 className="flex min-w-0 items-center gap-2 text-xl font-semibold md:text-2xl">
             {activeTopic && <span className={cn("size-2.5 shrink-0 rounded-full md:size-3", DOT[activeTopic.color])} />}
             <span className="truncate">{title}</span>
