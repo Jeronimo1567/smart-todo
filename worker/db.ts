@@ -1,4 +1,4 @@
-import { TOPIC_COLORS, type SyncOp, type SyncResponse, type Task, type Topic } from "../shared/types"
+import { TOPIC_COLORS, TOPIC_ICONS, type SyncOp, type SyncResponse, type Task, type Topic } from "../shared/types"
 
 export type Env = {
   DB: D1Database
@@ -38,6 +38,7 @@ export function rowToTopic(r: Row): Topic {
     id: r.id as string,
     name: r.name as string,
     color: r.color as Topic["color"],
+    icon: (r.icon as Topic["icon"]) ?? "Circle",
     position: r.position as number,
     updatedAt: r.updated_at as number,
     deleted: !!r.deleted,
@@ -67,6 +68,7 @@ const TASK_COLS: Record<string, Col> = {
 const TOPIC_COLS: Record<string, Col> = {
   name: ["name", str(60)],
   color: ["color", (v) => (TOPIC_COLORS.includes(v as never) ? v : undefined)],
+  icon: ["icon", (v) => (TOPIC_ICONS.includes(v as never) ? v : undefined)],
   position: ["position", numOrNull],
   deleted: ["deleted", bool],
 }

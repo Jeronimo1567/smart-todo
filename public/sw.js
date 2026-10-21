@@ -1,6 +1,6 @@
 // Service worker: instant app start (cached shell) + push reminders.
 
-const SHELL = "shell-v1"
+const SHELL = "shell-v2"
 const STATIC = "static-v1"
 
 self.addEventListener("install", () => self.skipWaiting())
@@ -37,10 +37,10 @@ self.addEventListener("fetch", (e) => {
   if (req.mode === "navigate") {
     e.respondWith(
       caches.open(SHELL).then(async (c) => {
-        const hit = await c.match("/")
+        const hit = await c.match(req, { ignoreSearch: true })
         const fresh = fetch(req)
           .then((res) => {
-            if (res.ok) c.put("/", res.clone())
+            if (res.ok) c.put(new URL(req.url).pathname, res.clone())
             return res
           })
           .catch(() => hit)

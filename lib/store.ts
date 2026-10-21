@@ -171,7 +171,7 @@ export function addTask(patch: TaskPatch) {
 export function saveTopic(id: string, patch: TopicPatch) {
   const prev = state.topics[id]
   const next: Topic = {
-    ...(prev ?? { id, name: "", color: "slate", position: Date.now(), deleted: false }),
+    ...(prev ?? { id, name: "", color: "slate", icon: "Circle", position: Date.now(), deleted: false }),
     ...patch,
     updatedAt: Date.now(),
   }

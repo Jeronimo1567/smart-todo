@@ -4,11 +4,13 @@ import { BellRingIcon, CalendarIcon, PlusIcon } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { Input } from "@/components/ui/input"
-import { DOT, dueLabel, startOfToday } from "@/lib/format"
+import { dueLabel, startOfToday } from "@/lib/format"
 import { parseQuickAdd } from "@/lib/parse"
 import { addTask } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import type { Topic } from "@/shared/types"
+
+import { TopicGlyph } from "./topic-icon"
 
 export function QuickAdd({
   topics,
@@ -58,7 +60,7 @@ export function QuickAdd({
         <div className="pointer-events-none absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1.5 bg-background pl-2 text-xs text-muted-foreground">
           {showTopicChip && topic && (
             <span className="flex items-center gap-1">
-              <span className={cn("size-2 rounded-full", DOT[topic.color])} />
+              <TopicGlyph topic={topic} className="size-3" />
               {topic.name}
             </span>
           )}

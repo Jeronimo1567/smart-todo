@@ -1,0 +1,1 @@
+ALTER TABLE topics ADD COLUMN icon TEXT NOT NULL DEFAULT 'Circle';

@@ -3,7 +3,7 @@
 // "add 'send invoice' to Work for Friday 3pm, important", etc.
 
 import { DAY, effectiveDue, formatLocal, localParts, parseLocalDue, startOfLocalDay } from "../shared/time"
-import { TOPIC_COLORS, type SyncOp, type Task, type TaskPatch, type Topic } from "../shared/types"
+import { TOPIC_COLORS, TOPIC_ICONS, type SyncOp, type Task, type TaskPatch, type Topic } from "../shared/types"
 import { type Env, applyOps, getTimezone, rowToTask, rowToTopic } from "./db"
 
 type Json = Record<string, unknown>
@@ -86,7 +86,11 @@ const tools = [
     inputSchema: {
       type: "object",
       required: ["name"],
-      properties: { name: { type: "string" }, color: { type: "string", enum: [...TOPIC_COLORS] } },
+      properties: {
+        name: { type: "string" },
+        color: { type: "string", enum: [...TOPIC_COLORS] },
+        icon: { type: "string", enum: [...TOPIC_ICONS], description: "Lucide icon name" },
+      },
     },
   },
 ]
@@ -253,7 +257,8 @@ async function callTool(name: string, args: Json, ctx: Ctx): Promise<string> {
         ? (args.color as Topic["color"])
         : TOPIC_COLORS[topics.length % TOPIC_COLORS.length]
       const position = Math.max(0, ...topics.map((t) => t.position)) + 1
-      await applyOps(env, [{ t: "topic", id: crypto.randomUUID(), patch: { name, color, position } }], now)
+      const icon = TOPIC_ICONS.includes(args.icon as never) ? (args.icon as Topic["icon"]) : "Circle"
+      await applyOps(env, [{ t: "topic", id: crypto.randomUUID(), patch: { name, color, icon, position } }], now)
       return `Created topic "${name}".`
     }
   }

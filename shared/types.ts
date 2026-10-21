@@ -21,11 +21,13 @@ export type Topic = {
   id: string
   name: string
   color: TopicColor
+  icon: TopicIcon
   position: number
   updatedAt: number
   deleted: boolean
 }
 
+// Order = order shown in the picker. New topics cycle through the first few.
 export const TOPIC_COLORS = [
   "sky",
   "amber",
@@ -34,9 +36,23 @@ export const TOPIC_COLORS = [
   "rose",
   "orange",
   "teal",
+  "blue",
+  "lime",
+  "indigo",
+  "pink",
   "slate",
 ] as const
 export type TopicColor = (typeof TOPIC_COLORS)[number]
+
+// 30 common Lucide icons ("Circle" renders as the plain dot).
+export const TOPIC_ICONS = [
+  "Circle", "Briefcase", "GraduationCap", "BookOpen", "House", "Heart",
+  "Dumbbell", "ShoppingCart", "Plane", "Car", "Code", "Laptop",
+  "Music", "Camera", "Palette", "Wallet", "Calendar", "Star",
+  "Flag", "Target", "Trophy", "Users", "PawPrint", "Utensils",
+  "Coffee", "Leaf", "Wrench", "Gamepad2", "Lightbulb", "Rocket",
+] as const
+export type TopicIcon = (typeof TOPIC_ICONS)[number]
 
 export type TaskPatch = Partial<Omit<Task, "id" | "updatedAt">>
 export type TopicPatch = Partial<Omit<Topic, "id" | "updatedAt">>

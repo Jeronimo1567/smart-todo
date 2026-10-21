@@ -5,10 +5,12 @@ import { memo } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { DOT, dueLabel, dueTone, type Tone } from "@/lib/format"
+import { dueLabel, dueTone, type Tone } from "@/lib/format"
 import { saveTask } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import type { Task, Topic } from "@/shared/types"
+
+import { TopicGlyph } from "./topic-icon"
 
 const TONE: Record<Tone, string> = {
   overdue: "bg-destructive/10 text-destructive",
@@ -42,7 +44,7 @@ export const TaskRow = memo(function TaskRow({
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             {topic && (
               <>
-                <span className={cn("size-2 shrink-0 rounded-full", DOT[topic.color])} />
+                <TopicGlyph topic={topic} className="size-3" />
                 {topic.name}
               </>
             )}

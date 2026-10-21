@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
-import { DAY, DOT, byDue, dayLabel, isOverdue, startOfToday } from "@/lib/format"
+import { DAY, byDue, dayLabel, isOverdue, startOfToday } from "@/lib/format"
 import { registerSW } from "@/lib/push"
 import { useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -17,6 +17,7 @@ import { Sidebar, type View } from "./sidebar"
 import { TaskDialog } from "./task-dialog"
 import { TaskRow } from "./task-row"
 import { TopicDialog } from "./topic-dialog"
+import { TopicIconPicker } from "./topic-icon"
 
 type Section = { key: string; label?: string; tone?: "danger"; tasks: Task[]; showTopic: boolean }
 
@@ -203,7 +204,7 @@ export function TodoApp() {
             <MenuIcon />
           </Button>
           <h1 className="flex min-w-0 items-center gap-2 text-xl font-semibold md:text-2xl">
-            {activeTopic && <span className={cn("size-2.5 shrink-0 rounded-full md:size-3", DOT[activeTopic.color])} />}
+            {activeTopic && <TopicIconPicker topic={activeTopic} className="size-6" glyphClassName="size-5" />}
             <span className="truncate">{title}</span>
           </h1>
           {activeTopic && (

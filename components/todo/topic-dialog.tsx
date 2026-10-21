@@ -6,10 +6,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { DOT } from "@/lib/format"
 import { saveTask, saveTopic } from "@/lib/store"
-import { cn } from "@/lib/utils"
-import { TOPIC_COLORS, type Task, type Topic } from "@/shared/types"
+import type { Task, Topic } from "@/shared/types"
 
 export function TopicDialog({
   topic,
@@ -47,21 +45,6 @@ function Editor({ topic, tasks, onClose, onDeleted }: { topic: Topic; tasks: Tas
     >
       <DialogTitle>Edit topic</DialogTitle>
       <Input value={name} onChange={(e) => setName(e.target.value)} className="h-10 text-base md:text-sm" autoFocus />
-      <div className="flex flex-wrap gap-2">
-        {TOPIC_COLORS.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => saveTopic(topic.id, { color: c })}
-            className={cn(
-              "size-7 rounded-full ring-offset-2 ring-offset-background",
-              DOT[c],
-              topic.color === c && "ring-2 ring-foreground"
-            )}
-            aria-label={c}
-          />
-        ))}
-      </div>
       {confirm && (
         <p className="text-sm text-muted-foreground">
           Its {inTopic.length} task{inTopic.length === 1 ? "" : "s"} will stay, without a topic.

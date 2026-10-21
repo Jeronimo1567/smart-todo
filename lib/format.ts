@@ -11,7 +11,26 @@ export const DOT: Record<TopicColor, string> = {
   rose: "bg-rose-500",
   orange: "bg-orange-500",
   teal: "bg-teal-500",
+  blue: "bg-blue-500",
+  lime: "bg-lime-500",
+  indigo: "bg-indigo-500",
+  pink: "bg-pink-500",
   slate: "bg-slate-400",
+}
+
+export const TEXT: Record<TopicColor, string> = {
+  sky: "text-sky-500",
+  amber: "text-amber-500",
+  emerald: "text-emerald-500",
+  violet: "text-violet-500",
+  rose: "text-rose-500",
+  orange: "text-orange-500",
+  teal: "text-teal-500",
+  blue: "text-blue-500",
+  lime: "text-lime-500",
+  indigo: "text-indigo-500",
+  pink: "text-pink-500",
+  slate: "text-slate-400",
 }
 
 export function startOfToday(now = Date.now()) {

@@ -17,11 +17,12 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { DOT } from "@/lib/format"
 import { type PushState, disablePush, enablePush, getPushState } from "@/lib/push"
 import { saveTopic } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { TOPIC_COLORS, type Topic } from "@/shared/types"
+
+import { TopicGlyph, TopicIconPicker } from "./topic-icon"
 
 export type View = "today" | "upcoming" | "all" | `topic:${string}`
 
@@ -130,14 +131,32 @@ export function Sidebar({
       {item("all", <InboxIcon className="size-4" />, "All tasks")}
       <Separator className="my-2" />
       <div className="flex min-h-0 w-full flex-col gap-0.5 overflow-y-auto">
-        {topics.map((t) =>
-          item(
-            `topic:${t.id}`,
-            <span className={cn("size-2 rounded-full", DOT[t.color])} />,
-            t.name,
-            counts.byTopic[t.id]
+        {topics.map((t) => {
+          const v: View = `topic:${t.id}`
+          if (collapsed) return item(v, <TopicGlyph topic={t} />, t.name)
+          const count = counts.byTopic[t.id]
+          // A div, not a button: it contains the icon picker's own button.
+          return (
+            <div
+              key={v}
+              role="button"
+              tabIndex={0}
+              aria-label={t.name}
+              onClick={() => onSelect(v)}
+              onKeyDown={(e) => {
+                if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault()
+                  onSelect(v)
+                }
+              }}
+              className={cn(ROW, "cursor-pointer", view === v && "bg-muted font-medium text-foreground")}
+            >
+              <TopicIconPicker topic={t} className="size-4" />
+              <span className="truncate">{t.name}</span>
+              {count ? <span className="ml-auto text-xs text-muted-foreground tabular-nums">{count}</span> : null}
+            </div>
           )
-        )}
+        })}
         {adding && !collapsed ? (
           <form onSubmit={addTopic} className="px-1 py-0.5">
             <Input
