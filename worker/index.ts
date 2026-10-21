@@ -17,7 +17,9 @@ function normalizeToken(t: string) {
   try {
     v = decodeURIComponent(v)
   } catch {}
-  return v.trim()
+  // Tokens are base64url. Copying a wrapped link on a phone can slip in invisible characters
+  // (zero-width spaces, soft hyphens), so keep only the token alphabet.
+  return v.replace(/[^A-Za-z0-9_-]/g, "")
 }
 
 // MCP clients may run in a browser; the token (not cookies) is the credential, so any origin is fine.
@@ -64,6 +66,10 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
           hasBraces: /[{}<>$]/.test(t),
           hasSpace: /\s/.test(t),
         })),
+        // Code points of any non-token characters in what was sent (still never the token itself).
+        oddChars: [fromPath, fromHeader, fromQuery]
+          .filter((t): t is string => !!t)
+          .map((t) => [...t].filter((c) => !/[A-Za-z0-9_-]/.test(c)).map((c) => "U+" + c.codePointAt(0)!.toString(16))),
       })
       return fromHeader || !fromPath
         ? Response.json(
