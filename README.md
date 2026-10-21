@@ -15,6 +15,7 @@ Open **Settings → Claude (MCP)** to copy your private connector URL (`https://
 
 - **claude.ai / Claude desktop / mobile**: Settings → Connectors → *Add custom connector* → paste the MCP URL.
 - **Claude Code**: `claude mcp add --transport http todo <MCP_URL>`
+- **Other MCP clients** (Muse, etc.): use the same URL, or `https://<your-worker>.workers.dev/api/mcp` with the token as `Authorization: Bearer <token>` (or `X-API-Key`). Trailing slashes, CORS preflight and SSE-only clients are handled.
 
 Then ask things like *"what's due this week?"*, *"add 'renew insurance' to Personal for Thursday 3pm, important"*, *"I finished the report"*, *"move everything due today to tomorrow"*.
 

@@ -8,20 +8,47 @@ import { handleMcp } from "./mcp"
 import { pushAll } from "./push"
 import { runReminders } from "./reminders"
 
+// MCP clients may run in a browser; the token (not cookies) is the credential, so any origin is fine.
+const MCP_CORS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, Mcp-Session-Id, MCP-Protocol-Version, Last-Event-ID",
+  "Access-Control-Expose-Headers": "Mcp-Session-Id",
+  "Access-Control-Max-Age": "86400",
+}
+
 const json = (data: unknown, init: ResponseInit = {}) =>
   Response.json(data, { ...init, headers: { "Cache-Control": "no-store", ...init.headers } })
 
 async function api(req: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname
 
-  // MCP: the secret token in the URL is the credential (works as a claude.ai custom connector).
-  if (path.startsWith("/api/mcp/")) {
-    const token = path.slice("/api/mcp/".length)
+  // MCP. The token can be in the URL (/api/mcp/<token>, used by claude.ai custom connectors),
+  // sent as "Authorization: Bearer <token>" / "X-API-Key" (clients that keep it in a vault), or ?token=.
+  if (path === "/api/mcp" || path.startsWith("/api/mcp/")) {
+    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: MCP_CORS })
+    // First path segment is the token; tolerate trailing "/", "/mcp", "/sse", spaces or URL-encoding.
+    let fromPath = path.slice("/api/mcp".length).split("/").filter(Boolean)[0] ?? ""
+    try {
+      fromPath = decodeURIComponent(fromPath).trim()
+    } catch {}
+    const fromHeader = req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? req.headers.get("X-API-Key")?.trim()
+    const fromQuery = url.searchParams.get("token")?.trim()
+    const candidates = [fromPath, fromHeader, fromQuery].filter((t): t is string => !!t)
     const [expected, prefs] = await Promise.all([getMcpToken(env), getPrefs(env)])
-    if (!prefs.mcpEnabled || !(await safeEqual(token, expected, env.SESSION_SECRET))) {
-      return new Response("Not found", { status: 404 })
+    let ok = false
+    for (const t of candidates) if (await safeEqual(t, expected, env.SESSION_SECRET)) ok = true
+    if (!prefs.mcpEnabled || !ok) {
+      return fromHeader || !fromPath
+        ? Response.json(
+            { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Missing or invalid token" } },
+            { status: 401, headers: MCP_CORS }
+          )
+        : new Response("Not found", { status: 404, headers: MCP_CORS })
     }
-    return handleMcp(req, env)
+    const res = await handleMcp(req, env)
+    for (const [k, v] of Object.entries(MCP_CORS)) res.headers.set(k, v)
+    return res
   }
 
   if (path === "/api/login" && req.method === "POST") {

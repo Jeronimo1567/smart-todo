@@ -304,6 +304,7 @@ async function handleOne(msg: RpcReq, env: Env): Promise<Json | null> {
 }
 
 export async function handleMcp(req: Request, env: Env): Promise<Response> {
+  // Stateless server: no server-initiated stream (GET) and no sessions to end (DELETE).
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: { Allow: "POST" } })
   let body: unknown
   try {
@@ -311,10 +312,17 @@ export async function handleMcp(req: Request, env: Env): Promise<Response> {
   } catch {
     return Response.json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, { status: 400 })
   }
-  if (Array.isArray(body)) {
-    const out = (await Promise.all(body.map((m) => handleOne(m as RpcReq, env)))).filter(Boolean)
-    return out.length ? Response.json(out) : new Response(null, { status: 202 })
+  const out = Array.isArray(body)
+    ? (await Promise.all(body.map((m) => handleOne(m as RpcReq, env)))).filter(Boolean)
+    : await handleOne(body as RpcReq, env)
+  if (!out || (Array.isArray(out) && !out.length)) return new Response(null, { status: 202 })
+
+  // Plain JSON unless the client only accepts a stream; then send it as a one-event SSE stream.
+  const accept = req.headers.get("Accept") ?? ""
+  if (accept.includes("text/event-stream") && !accept.includes("application/json") && !accept.includes("*/*")) {
+    return new Response(`event: message\ndata: ${JSON.stringify(out)}\n\n`, {
+      headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+    })
   }
-  const out = await handleOne(body as RpcReq, env)
-  return out ? Response.json(out) : new Response(null, { status: 202 })
+  return Response.json(out)
 }
