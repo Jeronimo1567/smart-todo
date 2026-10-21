@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "smart-todo",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./out",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "smart-todo",
+      "database_id": "ce1b95dc-480e-4a4a-ab30-c753618c98c5",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Reminder + digest check runs every minute (free plan allows this).
+  "triggers": { "crons": ["* * * * *"] },
+  "vars": {
+    "VAPID_PUBLIC_KEY": "BBRm3w5fg1U-rfqekkfYSRaZREX7rqLbyV5WDZh1UzDxHuMcQG2r8CTvHCW-vmX6cLNcfj0ghixRnOCqqu_zRy0",
+    "VAPID_SUBJECT": "https://github.com/Jeronimo1567/smart-todo",
+    "DEFAULT_TIMEZONE": "UTC"
+  },
+  "observability": { "enabled": true }
+}
