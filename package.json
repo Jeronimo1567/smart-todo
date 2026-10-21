@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit && tsc -p worker/tsconfig.json"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.1.0",
     "@base-ui/react": "^1.9.0",
     "@pushforge/builder": "^2.0.5",
     "class-variance-authority": "^0.7.1",

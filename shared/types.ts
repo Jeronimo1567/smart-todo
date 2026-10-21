@@ -88,6 +88,10 @@ export type SettingsResponse = Prefs & {
   emailConfigured: boolean
 }
 
+/** A task Clippy (the AI helper) proposes; ids are made on the device. */
+export type AiTask = Pick<Task, "title" | "topicId" | "dueAt" | "allDay" | "important" | "notes">
+export type AiResponse = { message: string; tasks: AiTask[] }
+
 export type TaskPatch = Partial<Omit<Task, "id" | "updatedAt">>
 export type TopicPatch = Partial<Omit<Topic, "id" | "updatedAt">>
 

@@ -2,6 +2,7 @@
 // without touching this code) and runs the reminder cron.
 
 import type { SettingsResponse, SyncOp } from "../shared/types"
+import { AiError, runAssistant } from "./ai"
 import { checkSession, clearCookie, issueCookie, safeEqual } from "./auth"
 import {
   type Env,
@@ -186,6 +187,20 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     case "POST /api/push/test": {
       const sent = await pushAll(env, { title: "Reminders are on", body: "This is how important tasks will bug you.", tag: "test" })
       return json({ sent }, { headers })
+    }
+    // Clippy: { mode: "create", text } turns words into tasks; { mode: "brief" } reviews the list.
+    case "POST /api/ai": {
+      const { mode, text } = await req.json<{ mode?: string; text?: string }>()
+      if (mode !== "create" && mode !== "brief") return json({ error: "Bad mode" }, { status: 400 })
+      const input = (text ?? "").trim().slice(0, 4000)
+      if (mode === "create" && !input) return json({ error: "Say or type something first" }, { status: 400 })
+      try {
+        return json(await runAssistant(env, mode, input), { headers })
+      } catch (e) {
+        if (e instanceof AiError) return json({ error: e.message }, { status: e.status })
+        console.error("ai", e)
+        return json({ error: "Clippy is having a moment. Try again." }, { status: 502 })
+      }
     }
     // Buttons on a notification ("Done", "Snooze 1h"), called from the service worker.
     case "POST /api/action": {

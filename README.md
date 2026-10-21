@@ -15,6 +15,7 @@ A deliberately simple, fast todo list split into topics (any lists you like) tha
 - **Today, Upcoming, All tasks**: overdue items float to the top in red, and each topic gets its own color and icon.
 - **Smart quick add**: `report #personal fri 5pm !` → Personal, Friday 5 PM, important. Understands `today`, `tmr`, weekdays, `oct 30`, `11/1`, `in 2 weeks`, `at 7`, `noon`, `#topic`, `!`.
 - **Reminders that bug you**: push notifications on phone and desktop. Important tasks ping 1 day, 3 h and 1 h before, at the due time, then **every hour while overdue** until you tick them off or hit *Snooze 1h* (quiet hours 10 PM – 8 AM by default). Normal tasks ping once. Every morning at 7:30 you get a digest push (plus an email if configured).
+- **Clippy (AI helper)**: a floating paperclip in the corner. Tap it and type or dictate (mic, Web Speech API) something like *"call mom tomorrow and finish the essay by friday 5pm, it's urgent"*; Claude Haiku turns it into tasks (with Undo). It also pops up on its own every few hours to point out what's overdue, due today or important, with a few suggested tasks you can add in one tap. Needs the `ANTHROPIC_API_KEY` secret; without it Clippy still gives the local heads-up.
 - **Stays signed in**: one password, once per device; the session renews itself.
 - **Settings pop-up**: reminder interval, quiet hours, morning summary, theme, sign out, and Claude access (turn MCP on/off, copy the connector URL, generate a new one).
 - **Works everywhere**: installable PWA. On iPhone, open it in Safari → Share → *Add to Home Screen* (required by iOS for notifications), then tap *Turn on reminders* in the sidebar.
@@ -68,4 +69,4 @@ Trigger the reminder cron locally: `curl http://localhost:8790/cdn-cgi/local/sch
 npm run deploy   # next build → D1 migrations → wrangler deploy
 ```
 
-Secrets (set once): `APP_PASSWORD`, `SESSION_SECRET`, `MCP_TOKEN`, `VAPID_PRIVATE_JWK`, and optionally `RESEND_API_KEY` + `DIGEST_EMAIL`, via `npx wrangler secret put NAME`.
+Secrets (set once): `APP_PASSWORD`, `SESSION_SECRET`, `MCP_TOKEN`, `VAPID_PRIVATE_JWK`, and optionally `ANTHROPIC_API_KEY` (Clippy) and `RESEND_API_KEY` + `DIGEST_EMAIL`, via `npx wrangler secret put NAME`.

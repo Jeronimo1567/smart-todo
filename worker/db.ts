@@ -12,6 +12,7 @@ export type Env = {
   DEFAULT_TIMEZONE: string
   RESEND_API_KEY?: string
   DIGEST_EMAIL?: string
+  ANTHROPIC_API_KEY?: string
 }
 
 type Row = Record<string, unknown>

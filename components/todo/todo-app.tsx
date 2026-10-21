@@ -12,6 +12,7 @@ import { saveTask, useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import type { Task, Topic } from "@/shared/types"
 
+import { Clippy } from "./clippy"
 import { Login } from "./login"
 import { AddTaskRow, QuickAdd } from "./quick-add"
 import { SettingsDialog } from "./settings-dialog"
@@ -268,7 +269,7 @@ export function TodoApp() {
           <QuickAdd {...addProps} className="mb-3" />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 pb-[max(env(safe-area-inset-bottom),1.5rem)] md:px-6 md:pb-6">
+        <div className="flex-1 overflow-y-auto px-2 pb-[calc(max(env(safe-area-inset-bottom),1rem)+5rem)] md:px-6 md:pb-24">
           {hydrated && empty && (
             <p className="hidden px-3 py-10 text-center text-sm text-muted-foreground md:block">
               {view === "today" ? "Nothing due today. Nice." : done.length ? "All done." : "No tasks here yet."}
@@ -327,6 +328,7 @@ export function TodoApp() {
 
       </main>
 
+      <Clippy open={open} topics={topics} now={now} enabled={hydrated && authed === true} />
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <TaskDialog task={openId ? (taskMap[openId] ?? null) : null} topics={topics} onClose={() => setOpenId(null)} />
       <TopicDialog
