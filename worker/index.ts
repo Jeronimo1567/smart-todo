@@ -2,15 +2,17 @@
 // without touching this code) and runs the reminder cron.
 
 import type { SettingsResponse, SyncOp } from "../shared/types"
-import { AiError, runAssistant } from "./ai"
+import { AiError, checkAnthropicKey, runAssistant } from "./ai"
 import { checkSession, clearCookie, issueCookie, safeEqual } from "./auth"
 import {
   type Env,
   applyOps,
   changesSince,
+  getAnthropicKey,
   getMcpApps,
   getMcpToken,
   getPrefs,
+  getSetting,
   getTimezone,
   saveMcpApps,
   setSetting,
@@ -202,6 +204,19 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
         return json({ error: "Clippy is having a moment. Try again." }, { status: 502 })
       }
     }
+    // Clippy's Claude API key. Write-only: settings only ever return its last 4 characters.
+    case "POST /api/claude-key": {
+      const { key } = await req.json<{ key?: string }>()
+      const k = (key ?? "").trim()
+      if (!/^sk-ant-[A-Za-z0-9_-]{20,}$/.test(k)) return json({ error: "That doesn't look like a Claude API key (sk-ant-…)." }, { status: 400 })
+      const problem = await checkAnthropicKey(k)
+      if (problem) return json({ error: problem }, { status: 400 })
+      await setSetting(env, "anthropic_api_key", k)
+      return json(await settingsResponse(env, url), { headers })
+    }
+    case "POST /api/claude-key/remove":
+      await env.DB.prepare("DELETE FROM settings WHERE key = 'anthropic_api_key'").run()
+      return json(await settingsResponse(env, url), { headers })
     // Buttons on a notification ("Done", "Snooze 1h"), called from the service worker.
     case "POST /api/action": {
       const { id, action } = await req.json<{ id?: string; action?: string }>()
@@ -217,11 +232,13 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
 }
 
 async function settingsResponse(env: Env, url: URL): Promise<SettingsResponse> {
-  const [prefs, timezone, token, apps] = await Promise.all([
+  const [prefs, timezone, token, apps, saved, claudeKey] = await Promise.all([
     getPrefs(env),
     getTimezone(env),
     getMcpToken(env),
     getMcpApps(env),
+    getSetting(env, "anthropic_api_key"),
+    getAnthropicKey(env),
   ])
   return {
     ...prefs,
@@ -229,6 +246,7 @@ async function settingsResponse(env: Env, url: URL): Promise<SettingsResponse> {
     mcpUrl: `${url.origin}/api/mcp/${token}`,
     mcpApps: apps.map((a) => ({ id: a.id, label: a.label, url: `${url.origin}/api/mcp/${a.token}` })),
     emailConfigured: !!(env.RESEND_API_KEY && env.DIGEST_EMAIL),
+    claudeKey: claudeKey ? { source: saved ? "settings" : "secret", last4: claudeKey.slice(-4) } : null,
   }
 }
 

@@ -6,7 +6,13 @@ import Anthropic from "@anthropic-ai/sdk"
 
 import { formatLocal, localParts, parseLocalDue } from "../shared/time"
 import type { AiResponse, AiTask, Task, Topic } from "../shared/types"
-import { type Env, getTimezone, rowToTask, rowToTopic } from "./db"
+import {
+  type Env,
+  getAnthropicKey,
+  getTimezone,
+  rowToTask,
+  rowToTopic,
+} from "./db"
 
 const MODEL = "claude-haiku-5-5"
 
@@ -65,13 +71,9 @@ export async function runAssistant(
   mode: "create" | "brief",
   text: string
 ): Promise<AiResponse> {
-  if (!env.ANTHROPIC_API_KEY)
-    throw new AiError(
-      "Clippy needs an ANTHROPIC_API_KEY secret on the Worker.",
-      503
-    )
   const now = Date.now()
-  const [tz, topicRows, taskRows] = await Promise.all([
+  const [apiKey, tz, topicRows, taskRows] = await Promise.all([
+    getAnthropicKey(env),
     getTimezone(env),
     env.DB.prepare(
       "SELECT * FROM topics WHERE deleted = 0 ORDER BY position"
@@ -80,6 +82,11 @@ export async function runAssistant(
       "SELECT * FROM tasks WHERE deleted = 0 AND done_at IS NULL ORDER BY due_at IS NULL, due_at LIMIT 150"
     ).all<Record<string, unknown>>(),
   ])
+  if (!apiKey)
+    throw new AiError(
+      "Add your Claude API key in Settings → Clippy to wake me up.",
+      503
+    )
   const topics = topicRows.results.map(rowToTopic)
   const tasks = taskRows.results.map(rowToTask)
   const p = localParts(now, tz)
@@ -96,23 +103,40 @@ export async function runAssistant(
     `Open tasks:\n${tasks.map((t) => describeTask(t, topics, tz, now)).join("\n") || "(none)"}`,
   ].join("\n\n")
 
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
-  const res = await client.messages.create({
-    model: MODEL,
-    max_tokens: 2000,
-    output_config: {
-      effort: "low",
-      format: { type: "json_schema", schema: SCHEMA },
-    },
-    system: `${SYSTEM}\n\n${mode === "create" ? CREATE : BRIEF}`,
-    messages: [
-      {
-        role: "user",
-        content:
-          mode === "create" ? `${context}\n\nUser said:\n${text}` : context,
+  const client = new Anthropic({ apiKey })
+  const res = await client.messages
+    .create({
+      model: MODEL,
+      max_tokens: 2000,
+      output_config: {
+        effort: "low",
+        format: { type: "json_schema", schema: SCHEMA },
       },
-    ],
-  })
+      system: `${SYSTEM}\n\n${mode === "create" ? CREATE : BRIEF}`,
+      messages: [
+        {
+          role: "user",
+          content:
+            mode === "create" ? `${context}\n\nUser said:\n${text}` : context,
+        },
+      ],
+    })
+    .catch((e) => {
+      if (
+        e instanceof Anthropic.AuthenticationError ||
+        e instanceof Anthropic.PermissionDeniedError
+      )
+        throw new AiError(
+          "Your Claude API key was rejected. Update it in Settings → Clippy.",
+          400
+        )
+      if (e instanceof Anthropic.RateLimitError)
+        throw new AiError(
+          "Too many requests right now. Try again in a minute.",
+          429
+        )
+      throw e
+    })
   if (res.stop_reason === "refusal")
     return { message: "I can't help with that one.", tasks: [] }
   const out = res.content.find((b) => b.type === "text")
@@ -159,5 +183,20 @@ export class AiError extends Error {
     public status: number
   ) {
     super(message)
+  }
+}
+
+/** Checks a pasted key with a free call (no tokens used) before it's saved. */
+export async function checkAnthropicKey(apiKey: string) {
+  try {
+    await new Anthropic({ apiKey, maxRetries: 0 }).models.retrieve(MODEL)
+    return null
+  } catch (e) {
+    if (e instanceof Anthropic.AuthenticationError)
+      return "That key was rejected by Anthropic."
+    if (e instanceof Anthropic.PermissionDeniedError)
+      return "That key can't use Claude Haiku."
+    if (e instanceof Anthropic.APIError) return `Anthropic said: ${e.message}`
+    return "Couldn't reach Anthropic. Try again."
   }
 }

@@ -161,6 +161,11 @@ export async function getMcpToken(env: Env) {
   return (await getSetting(env, "mcp_token")) ?? env.MCP_TOKEN
 }
 
+/** Claude API key for Clippy: pasted in Settings, or the deploy-time secret as a fallback. */
+export async function getAnthropicKey(env: Env) {
+  return (await getSetting(env, "anthropic_api_key")) ?? env.ANTHROPIC_API_KEY ?? null
+}
+
 export type StoredMcpApp = { id: string; label: string; token: string; createdAt: number }
 
 export async function getMcpApps(env: Env): Promise<StoredMcpApp[]> {

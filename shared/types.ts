@@ -86,6 +86,8 @@ export type SettingsResponse = Prefs & {
   mcpUrl: string
   mcpApps: McpApp[]
   emailConfigured: boolean
+  /** Where Clippy's Claude API key comes from, and its last 4 characters (never the key itself). */
+  claudeKey: { source: "settings" | "secret"; last4: string } | null
 }
 
 /** A task Clippy (the AI helper) proposes; ids are made on the device. */

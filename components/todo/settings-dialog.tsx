@@ -189,6 +189,10 @@ function SettingsBody() {
         )}
       </Section>
 
+      <Section title="Clippy (Claude API)">
+        <ClaudeKey s={s} onChange={setS} />
+      </Section>
+
       <Section title="AI assistants (MCP)">
         <Row label="Let AI assistants manage this list" hint="Read, add, edit and complete tasks">
           <Switch
@@ -293,6 +297,115 @@ function SettingsBody() {
         </Button>
       </Section>
     </div>
+  )
+}
+
+/** Clippy's Claude API key. Write-only: the server only ever sends back the last 4 characters. */
+function ClaudeKey({ s, onChange }: { s: SettingsResponse | null; onChange: (s: SettingsResponse) => void }) {
+  const [key, setKey] = useState("")
+  const [editing, setEditing] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function call(path: string, body?: unknown) {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body ?? {}),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        haptic("error")
+        return setError(data.error ?? "Something went wrong.")
+      }
+      haptic("success")
+      onChange(data)
+      setKey("")
+      setEditing(false)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!s) return <p className="text-sm text-muted-foreground">…</p>
+  const k = s.claudeKey
+  return (
+    <>
+      <Row
+        label="API key"
+        hint={
+          k
+            ? k.source === "settings"
+              ? "Clippy is awake. Uses Claude Haiku."
+              : "Using the key set on the Worker."
+            : "Clippy needs one to turn words into tasks and give tips."
+        }
+      >
+        {k && !editing && <code className="rounded-md bg-muted px-2 py-1 text-xs">sk-ant-…{k.last4}</code>}
+      </Row>
+      {editing || !k ? (
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (key.trim()) call("/api/claude-key", { key })
+          }}
+        >
+          <Input
+            type="password"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder="sk-ant-…"
+            autoComplete="off"
+            className="h-9 text-base md:h-8 md:text-sm"
+            aria-label="Claude API key"
+          />
+          <Button type="submit" size="sm" className="h-9 md:h-8" disabled={busy || !key.trim()}>
+            {busy ? "Checking…" : "Save"}
+          </Button>
+          {k && (
+            <Button type="button" variant="ghost" size="sm" className="h-9 md:h-8" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+          )}
+        </form>
+      ) : (
+        <div className="flex gap-1">
+          <Button variant="outline" size="sm" className="h-9 md:h-8" onClick={() => setEditing(true)}>
+            Change key
+          </Button>
+          {k.source === "settings" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 text-muted-foreground md:h-8"
+              disabled={busy}
+              onClick={() => call("/api/claude-key/remove")}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
+      )}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      {!k && (
+        <p className="text-xs text-muted-foreground">
+          Create one at{" "}
+          <a
+            href="https://platform.claude.com/settings/keys"
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            platform.claude.com
+          </a>
+          . It&apos;s stored on your server and never shown again.
+        </p>
+      )}
+    </>
   )
 }
 
