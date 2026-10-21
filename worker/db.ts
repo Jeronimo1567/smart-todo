@@ -160,6 +160,20 @@ export async function getMcpToken(env: Env) {
   return (await getSetting(env, "mcp_token")) ?? env.MCP_TOKEN
 }
 
+export type StoredMcpApp = { id: string; label: string; token: string; createdAt: number }
+
+export async function getMcpApps(env: Env): Promise<StoredMcpApp[]> {
+  try {
+    return JSON.parse((await getSetting(env, "mcp_apps")) ?? "[]")
+  } catch {
+    return []
+  }
+}
+
+export function saveMcpApps(env: Env, apps: StoredMcpApp[]) {
+  return setSetting(env, "mcp_apps", JSON.stringify(apps))
+}
+
 export function isQuiet(prefs: Prefs, hour: number) {
   const { quietStart: s, quietEnd: e } = prefs
   if (s === e) return false

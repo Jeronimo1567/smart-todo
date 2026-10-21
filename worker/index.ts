@@ -3,10 +3,22 @@
 
 import type { SettingsResponse, SyncOp } from "../shared/types"
 import { checkSession, clearCookie, issueCookie, safeEqual } from "./auth"
-import { type Env, applyOps, changesSince, getMcpToken, getPrefs, getTimezone, setSetting, updatePrefs } from "./db"
+import {
+  type Env,
+  applyOps,
+  changesSince,
+  getMcpApps,
+  getMcpToken,
+  getPrefs,
+  getTimezone,
+  saveMcpApps,
+  setSetting,
+  updatePrefs,
+} from "./db"
 import { handleMcp } from "./mcp"
 import { pushAll } from "./push"
 import { runReminders } from "./reminders"
+import { wordToken } from "./words"
 
 /** Forgive common copy/paste mix-ups: "Bearer Bearer x", quotes, or the whole connector URL. */
 function normalizeToken(t: string) {
@@ -51,9 +63,11 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
       .map((k) => url.searchParams.get(k)?.trim())
       .find(Boolean)
     const candidates = [fromPath, fromHeader, fromQuery].filter((t): t is string => !!t).map(normalizeToken)
-    const [expected, prefs] = await Promise.all([getMcpToken(env), getPrefs(env)])
+    const [main, apps, prefs] = await Promise.all([getMcpToken(env), getMcpApps(env), getPrefs(env)])
+    const valid = [main, ...apps.map((a) => a.token)]
+    const expected = main
     let ok = false
-    for (const t of candidates) if (await safeEqual(t, expected, env.SESSION_SECRET)) ok = true
+    for (const t of candidates) for (const v of valid) if (await safeEqual(t, v, env.SESSION_SECRET)) ok = true
     if (!prefs.mcpEnabled || !ok) {
       // Safe diagnostics (never the token itself) to debug clients that send the wrong value.
       console.log("mcp auth rejected", {
@@ -133,6 +147,24 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
       await setSetting(env, "mcp_token", token)
       return json(await settingsResponse(env, url), { headers })
     }
+    // Extra MCP URLs, one per app, each removable on its own. Word tokens copy reliably.
+    case "POST /api/mcp-apps": {
+      const { label } = await req.json<{ label?: string }>()
+      const apps = await getMcpApps(env)
+      apps.push({
+        id: crypto.randomUUID(),
+        label: (label ?? "").trim().slice(0, 40) || "App",
+        token: wordToken(),
+        createdAt: Date.now(),
+      })
+      await saveMcpApps(env, apps.slice(-20))
+      return json(await settingsResponse(env, url), { headers })
+    }
+    case "POST /api/mcp-apps/remove": {
+      const { id } = await req.json<{ id?: string }>()
+      await saveMcpApps(env, (await getMcpApps(env)).filter((a) => a.id !== id))
+      return json(await settingsResponse(env, url), { headers })
+    }
     case "POST /api/push/subscribe": {
       const sub = await req.json<{ endpoint?: string; keys?: { p256dh?: string; auth?: string } }>()
       if (!sub.endpoint?.startsWith("https://") || !sub.keys?.p256dh || !sub.keys?.auth) {
@@ -170,11 +202,17 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
 }
 
 async function settingsResponse(env: Env, url: URL): Promise<SettingsResponse> {
-  const [prefs, timezone, token] = await Promise.all([getPrefs(env), getTimezone(env), getMcpToken(env)])
+  const [prefs, timezone, token, apps] = await Promise.all([
+    getPrefs(env),
+    getTimezone(env),
+    getMcpToken(env),
+    getMcpApps(env),
+  ])
   return {
     ...prefs,
     timezone,
     mcpUrl: `${url.origin}/api/mcp/${token}`,
+    mcpApps: apps.map((a) => ({ id: a.id, label: a.label, url: `${url.origin}/api/mcp/${a.token}` })),
     emailConfigured: !!(env.RESEND_API_KEY && env.DIGEST_EMAIL),
   }
 }

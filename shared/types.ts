@@ -78,7 +78,15 @@ export const DEFAULT_PREFS: Prefs = {
 
 export const NAG_OPTIONS = [30, 60, 120, 240] as const
 
-export type SettingsResponse = Prefs & { timezone: string; mcpUrl: string; emailConfigured: boolean }
+/** An extra MCP URL for another app (e.g. Muse), with its own removable token. */
+export type McpApp = { id: string; label: string; url: string }
+
+export type SettingsResponse = Prefs & {
+  timezone: string
+  mcpUrl: string
+  mcpApps: McpApp[]
+  emailConfigured: boolean
+}
 
 export type TaskPatch = Partial<Omit<Task, "id" | "updatedAt">>
 export type TopicPatch = Partial<Omit<Topic, "id" | "updatedAt">>

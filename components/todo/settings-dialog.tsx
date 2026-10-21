@@ -1,17 +1,18 @@
 "use client"
 
-import { CheckIcon, CopyIcon, LogOutIcon, RefreshCwIcon } from "lucide-react"
+import { CheckIcon, CopyIcon, LogOutIcon, PlusIcon, RefreshCwIcon, Trash2Icon } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { haptic, hapticsEnabled, isTouchDevice, setHapticsEnabled } from "@/lib/haptics"
 import { type PushState, disablePush, enablePush, getPushState } from "@/lib/push"
 import { logout } from "@/lib/store"
 import { cn } from "@/lib/utils"
-import { NAG_OPTIONS, type Prefs, type SettingsResponse } from "@/shared/types"
+import { type McpApp, NAG_OPTIONS, type Prefs, type SettingsResponse } from "@/shared/types"
 
 const select =
   "h-10 rounded-md border border-input bg-transparent px-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-8 md:text-sm dark:bg-input/30"
@@ -188,18 +189,19 @@ function SettingsBody() {
         )}
       </Section>
 
-      <Section title="Claude (MCP)">
-        <Row label="Let Claude manage this list" hint="Read, add, edit and complete tasks">
+      <Section title="AI assistants (MCP)">
+        <Row label="Let AI assistants manage this list" hint="Read, add, edit and complete tasks">
           <Switch
             checked={!!s?.mcpEnabled}
             disabled={!s}
             onCheckedChange={(v) => update({ mcpEnabled: v })}
-            aria-label="Let Claude manage this list"
+            aria-label="Let AI assistants manage this list"
           />
         </Row>
         {s?.mcpEnabled && (
           <>
-            <div className="flex items-center gap-2">
+            <div className="text-xs font-medium">Claude</div>
+            <div className="-mt-2 flex items-center gap-2">
               <code className="min-w-0 flex-1 truncate rounded-md bg-muted px-2.5 py-2 text-xs">{masked}</code>
               <Button variant="outline" size="sm" className="h-9 md:h-8" onClick={() => s && copy(s.mcpUrl, "url")}>
                 {copied === "url" ? <CheckIcon /> : <CopyIcon />}
@@ -240,6 +242,7 @@ function SettingsBody() {
                 Generate a new URL
               </Button>
             )}
+            <OtherApps apps={s.mcpApps} onChange={setS} copy={copy} copied={copied} />
           </>
         )}
       </Section>
@@ -289,6 +292,97 @@ function SettingsBody() {
           Sign out of this device
         </Button>
       </Section>
+    </div>
+  )
+}
+
+/** Extra URLs for other assistants (e.g. Muse). Word-based so they copy without mistakes; each can be removed. */
+function OtherApps({
+  apps,
+  onChange,
+  copy,
+  copied,
+}: {
+  apps: McpApp[]
+  onChange: (s: SettingsResponse) => void
+  copy: (text: string, key: string) => void
+  copied: string | null
+}) {
+  const [label, setLabel] = useState("")
+  const [adding, setAdding] = useState(false)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+
+  async function call(path: string, body: unknown) {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    if (res.ok) onChange(await res.json())
+  }
+
+  return (
+    <div className="mt-1 flex flex-col gap-2 border-t pt-3">
+      <div className="text-xs font-medium">Other apps</div>
+      {apps.length === 0 && (
+        <p className="-mt-1 text-xs text-muted-foreground">
+          Give another assistant (like Muse) its own URL. You can remove it without affecting Claude.
+        </p>
+      )}
+      {apps.map((a) => (
+        <div key={a.id} className="flex items-center gap-2">
+          <span className="w-16 shrink-0 truncate text-sm">{a.label}</span>
+          <code className="min-w-0 flex-1 truncate rounded-md bg-muted px-2.5 py-2 text-xs">
+            {a.url.replace(/\/api\/mcp\/.+$/, "/api/mcp/••••")}
+          </code>
+          <Button variant="outline" size="sm" className="h-9 md:h-8" onClick={() => copy(a.url, a.id)}>
+            {copied === a.id ? <CheckIcon /> : <CopyIcon />}
+            <span className="sr-only md:not-sr-only">{copied === a.id ? "Copied" : "Copy"}</span>
+          </Button>
+          <Button
+            variant={confirmId === a.id ? "destructive" : "ghost"}
+            size="sm"
+            className="h-9 md:h-8"
+            onClick={() => {
+              if (confirmId !== a.id) return setConfirmId(a.id)
+              haptic("warning")
+              setConfirmId(null)
+              call("/api/mcp-apps/remove", { id: a.id })
+            }}
+            aria-label={`Remove ${a.label}`}
+          >
+            {confirmId === a.id ? "Remove" : <Trash2Icon />}
+          </Button>
+        </div>
+      ))}
+      {adding ? (
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            haptic("success")
+            call("/api/mcp-apps", { label })
+            setLabel("")
+            setAdding(false)
+          }}
+        >
+          <Input
+            autoFocus
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="App name, e.g. Muse"
+            className="h-9 text-base md:h-8 md:text-sm"
+          />
+          <Button type="submit" size="sm" className="h-9 md:h-8">
+            Create URL
+          </Button>
+        </form>
+      ) : (
+        <Button variant="ghost" size="sm" className="self-start text-muted-foreground" onClick={() => setAdding(true)}>
+          <PlusIcon />
+          Add an app
+        </Button>
+      )}
     </div>
   )
 }
