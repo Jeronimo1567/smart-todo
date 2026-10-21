@@ -1,23 +1,12 @@
 "use client"
 
-import {
-  BellOffIcon,
-  BellRingIcon,
-  CalendarIcon,
-  InboxIcon,
-  MoonIcon,
-  PanelLeftCloseIcon,
-  PlusIcon,
-  SunIcon,
-  SunMediumIcon,
-} from "lucide-react"
-import { useTheme } from "next-themes"
+import { CalendarIcon, InboxIcon, PanelLeftCloseIcon, PlusIcon, SettingsIcon, SunIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { type PushState, disablePush, enablePush, getPushState } from "@/lib/push"
+import { getPushState } from "@/lib/push"
 import { saveTopic } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { TOPIC_COLORS, type Topic } from "@/shared/types"
@@ -28,11 +17,12 @@ export type View = "today" | "upcoming" | "all" | `topic:${string}`
 
 // Every row has the same geometry in both states (p-2 container, px-3 row, 16px icon box),
 // so collapsing only hides labels: icons never move. Rail width = 8 + 12 + 16 + 12 + 8 = 56px.
+// On phones (the menu sheet) rows and icons are larger for fingers.
 const ROW =
-  "relative flex h-9 w-full shrink-0 items-center gap-3 rounded-md px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+  "relative flex h-11 w-full shrink-0 items-center gap-3 rounded-md px-3 text-base text-muted-foreground hover:bg-muted hover:text-foreground md:h-9 md:text-sm [&_svg]:size-5 md:[&_svg]:size-4"
 
 function IconBox({ children }: { children: React.ReactNode }) {
-  return <span className="flex size-4 shrink-0 items-center justify-center">{children}</span>
+  return <span className="flex size-5 shrink-0 items-center justify-center md:size-4">{children}</span>
 }
 
 export function Sidebar({
@@ -42,6 +32,7 @@ export function Sidebar({
   counts,
   collapsed = false,
   onToggle,
+  onOpenSettings,
 }: {
   view: View
   onSelect: (v: View) => void
@@ -51,10 +42,16 @@ export function Sidebar({
   collapsed?: boolean
   /** Desktop only: shows the collapse / expand control. */
   onToggle?: () => void
+  onOpenSettings: () => void
 }) {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState("")
   const handled = useRef(false) // Enter and the following blur both fire
+  // Nudge (amber dot on Settings) until reminders are on for this device.
+  const [remindersOff, setRemindersOff] = useState(false)
+  useEffect(() => {
+    getPushState().then((s) => setRemindersOff(s === "off" || s === "needs-install"))
+  }, [])
 
   function addTopic(e: React.FormEvent) {
     e.preventDefault()
@@ -151,7 +148,7 @@ export function Sidebar({
               }}
               className={cn(ROW, "cursor-pointer", view === v && "bg-muted font-medium text-foreground")}
             >
-              <TopicIconPicker topic={t} className="size-4" />
+              <TopicIconPicker topic={t} className="relative size-5 after:absolute after:-inset-2 md:size-4" />
               <span className="truncate">{t.name}</span>
               {count ? <span className="ml-auto text-xs text-muted-foreground tabular-nums">{count}</span> : null}
             </div>
@@ -188,9 +185,24 @@ export function Sidebar({
         )}
       </div>
 
-      <div className="mt-auto flex w-full flex-col gap-0.5 pt-2">
-        <ReminderToggle collapsed={collapsed} />
-        <ThemeToggle collapsed={collapsed} />
+      <div className="mt-auto flex w-full flex-col pt-2">
+        <button
+          onClick={onOpenSettings}
+          className={ROW}
+          aria-label="Settings"
+          title={collapsed ? "Settings" : undefined}
+        >
+          <IconBox>
+            <SettingsIcon />
+          </IconBox>
+          {!collapsed && <span>Settings</span>}
+          {remindersOff && (
+            <span
+              className={cn("size-1.5 rounded-full bg-amber-500", collapsed ? "absolute top-1.5 left-7" : "ml-auto")}
+              title="Reminders are off on this device"
+            />
+          )}
+        </button>
       </div>
     </div>
   )
@@ -199,67 +211,4 @@ export function Sidebar({
 export function Logo({ className }: { className?: string }) {
   // eslint-disable-next-line @next/next/no-img-element -- static export, tiny file
   return <img src="/logo.png" alt="" width={20} height={20} className={cn("size-5 shrink-0", className)} />
-}
-
-function ThemeToggle({ collapsed }: { collapsed: boolean }) {
-  const { resolvedTheme, setTheme } = useTheme()
-  const dark = resolvedTheme === "dark"
-  const label = dark ? "Light mode" : "Dark mode"
-  return (
-    <button
-      className={ROW}
-      onClick={() => setTheme(dark ? "light" : "dark")}
-      aria-label={label}
-      title={collapsed ? label : undefined}
-    >
-      <IconBox>
-        <SunMediumIcon className="hidden size-4 dark:block" />
-        <MoonIcon className="size-4 dark:hidden" />
-      </IconBox>
-      {!collapsed && <span className="truncate">{label}</span>}
-    </button>
-  )
-}
-
-const PUSH_LABEL: Record<PushState, string> = {
-  on: "Reminders on",
-  off: "Turn on reminders",
-  denied: "Notifications blocked",
-  unsupported: "Reminders unavailable",
-  "needs-install": "Add to Home Screen for reminders",
-}
-
-const PUSH_HINT: Partial<Record<PushState, string>> = {
-  "needs-install": "On iPhone: tap Share → Add to Home Screen, then open the app from there.",
-  denied: "Allow notifications for this site in your browser settings.",
-}
-
-function ReminderToggle({ collapsed }: { collapsed: boolean }) {
-  const [state, setState] = useState<PushState | null>(null)
-  const [busy, setBusy] = useState(false)
-  useEffect(() => {
-    getPushState().then(setState)
-  }, [])
-  if (!state) return <div className="h-9 shrink-0" />
-  const on = state === "on"
-  return (
-    <button
-      disabled={busy || state === "unsupported"}
-      className={cn(ROW, "disabled:opacity-50", !on && "text-amber-700 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-400")}
-      aria-label={PUSH_LABEL[state]}
-      title={PUSH_HINT[state] ?? (collapsed ? PUSH_LABEL[state] : undefined)}
-      onClick={async () => {
-        if (state !== "on" && state !== "off") return
-        setBusy(true)
-        try {
-          setState(await (on ? disablePush() : enablePush()))
-        } finally {
-          setBusy(false)
-        }
-      }}
-    >
-      <IconBox>{on ? <BellRingIcon className="size-4" /> : <BellOffIcon className="size-4" />}</IconBox>
-      {!collapsed && <span className="truncate text-xs">{PUSH_LABEL[state]}</span>}
-    </button>
-  )
 }

@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils"
 import type { Task, Topic } from "@/shared/types"
 
 import { Login } from "./login"
-import { QuickAdd } from "./quick-add"
+import { AddTaskRow, QuickAdd } from "./quick-add"
+import { SettingsDialog } from "./settings-dialog"
 import { Sidebar, type View } from "./sidebar"
 import { TaskDialog } from "./task-dialog"
 import { TaskRow } from "./task-row"
@@ -68,6 +69,7 @@ export function TodoApp() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [editTopic, setEditTopic] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [showDone, setShowDone] = useState(false)
   // Re-render at midnight-ish so "Today" stays right.
   const [now, setNow] = useState(() => Date.now())
@@ -162,15 +164,11 @@ export function TodoApp() {
   if (authed === false) return <Login />
 
   const empty = sections.every((s) => !s.tasks.length)
-  const quickAdd = (
-    <QuickAdd
-      topics={topics}
-      defaultTopicId={activeTopic?.id ?? null}
-      defaultToday={view === "today"}
-      className="md:mb-3"
-    />
-  )
-  const sidebar = <Sidebar view={view} onSelect={select} topics={topics} counts={counts} />
+  const addProps = { topics, defaultTopicId: activeTopic?.id ?? null, defaultToday: view === "today" }
+  const openSettings = () => {
+    setMenuOpen(false)
+    setSettingsOpen(true)
+  }
   const isCollapsed = collapsed === "1"
 
   return (
@@ -188,30 +186,43 @@ export function TodoApp() {
           counts={counts}
           collapsed={isCollapsed}
           onToggle={toggleSidebar}
+          onOpenSettings={openSettings}
         />
       </aside>
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent side="left" className="w-72 bg-background pt-[env(safe-area-inset-top)]" showCloseButton={false}>
           <SheetTitle className="sr-only">Lists</SheetTitle>
-          {sidebar}
+          <Sidebar view={view} onSelect={select} topics={topics} counts={counts} onOpenSettings={openSettings} />
         </SheetContent>
       </Sheet>
 
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-1 px-3 pt-[max(env(safe-area-inset-top),0.75rem)] pb-2 md:px-8 md:pt-8 md:pb-4">
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMenuOpen(true)} aria-label="Open lists">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-11 md:hidden [&_svg:not([class*='size-'])]:size-6"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open lists"
+          >
             <MenuIcon />
           </Button>
           <h1 className="flex min-w-0 items-center gap-2 text-xl font-semibold md:text-2xl">
-            {activeTopic && <TopicIconPicker topic={activeTopic} className="size-6" glyphClassName="size-5" />}
+            {activeTopic && (
+              <TopicIconPicker
+                topic={activeTopic}
+                className="relative size-6 after:absolute after:-inset-2"
+                glyphClassName="size-5"
+              />
+            )}
             <span className="truncate">{title}</span>
           </h1>
           {activeTopic && (
             <Button
               variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground"
+              size="icon"
+              className="size-11 text-muted-foreground md:size-8"
               onClick={() => setEditTopic(true)}
               aria-label="Edit topic"
             >
@@ -220,9 +231,11 @@ export function TodoApp() {
           )}
         </header>
 
-        <div className="hidden px-8 md:block">{quickAdd}</div>
+        <div className="hidden px-8 md:block">
+          <QuickAdd {...addProps} className="mb-3" />
+        </div>
 
-        <div className="flex-1 overflow-y-auto px-2 pb-6 md:px-6">
+        <div className="flex-1 overflow-y-auto px-2 pb-[max(env(safe-area-inset-bottom),1.5rem)] md:px-6 md:pb-6">
           {hydrated && empty && (
             <p className="px-3 py-10 text-center text-sm text-muted-foreground">
               {view === "today" ? "Nothing due today. Nice." : done.length ? "All done." : "No tasks here yet."}
@@ -253,11 +266,12 @@ export function TodoApp() {
                 </section>
               )
           )}
+          <AddTaskRow key={view} {...addProps} className="md:hidden" />
           {done.length > 0 && (
             <section className="mt-2">
               <button
                 onClick={() => setShowDone(!showDone)}
-                className="flex items-center gap-1 px-2 py-1 text-xs font-medium tracking-wide text-muted-foreground uppercase hover:text-foreground"
+                className="flex items-center gap-1 px-2 py-2.5 text-sm font-medium tracking-wide text-muted-foreground uppercase hover:text-foreground md:py-1 md:text-xs"
               >
                 <ChevronRightIcon className={cn("size-3.5 transition-transform", showDone && "rotate-90")} />
                 Completed ({done.length})
@@ -275,9 +289,9 @@ export function TodoApp() {
           )}
         </div>
 
-        <div className="border-t bg-background p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] md:hidden">{quickAdd}</div>
       </main>
 
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <TaskDialog task={openId ? (taskMap[openId] ?? null) : null} topics={topics} onClose={() => setOpenId(null)} />
       <TopicDialog
         topic={editTopic && activeTopic ? activeTopic : null}

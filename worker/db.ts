@@ -1,4 +1,4 @@
-import { TOPIC_COLORS, TOPIC_ICONS, type SyncOp, type SyncResponse, type Task, type Topic } from "../shared/types"
+import { DEFAULT_PREFS, NAG_OPTIONS, type Prefs, TOPIC_COLORS, TOPIC_ICONS, type SyncOp, type SyncResponse, type Task, type Topic } from "../shared/types"
 
 export type Env = {
   DB: D1Database
@@ -131,4 +131,37 @@ export function setSetting(env: Env, key: string, value: string) {
 
 export async function getTimezone(env: Env) {
   return (await getSetting(env, "timezone")) ?? env.DEFAULT_TIMEZONE
+}
+
+export async function getPrefs(env: Env): Promise<Prefs> {
+  try {
+    return { ...DEFAULT_PREFS, ...JSON.parse((await getSetting(env, "prefs")) ?? "{}") }
+  } catch {
+    return DEFAULT_PREFS
+  }
+}
+
+/** Validates and merges a partial update; unknown or bad values are ignored. */
+export async function updatePrefs(env: Env, patch: Record<string, unknown>) {
+  const next = await getPrefs(env)
+  const hour = (v: unknown) => typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 23
+  if (hour(patch.quietStart)) next.quietStart = patch.quietStart as number
+  if (hour(patch.quietEnd)) next.quietEnd = patch.quietEnd as number
+  if (NAG_OPTIONS.includes(patch.nagMinutes as never)) next.nagMinutes = patch.nagMinutes as number
+  if (typeof patch.digestEnabled === "boolean") next.digestEnabled = patch.digestEnabled
+  if (typeof patch.digestTime === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(patch.digestTime)) next.digestTime = patch.digestTime
+  if (typeof patch.mcpEnabled === "boolean") next.mcpEnabled = patch.mcpEnabled
+  await setSetting(env, "prefs", JSON.stringify(next))
+  return next
+}
+
+/** The MCP token can be rotated from Settings; the deploy-time secret is the fallback. */
+export async function getMcpToken(env: Env) {
+  return (await getSetting(env, "mcp_token")) ?? env.MCP_TOKEN
+}
+
+export function isQuiet(prefs: Prefs, hour: number) {
+  const { quietStart: s, quietEnd: e } = prefs
+  if (s === e) return false
+  return s > e ? hour >= s || hour < e : hour >= s && hour < e
 }

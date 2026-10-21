@@ -114,7 +114,7 @@ export function TopicIconPicker({
         aria-label={`Change icon for ${topic.name}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <TopicGlyph topic={topic} className={glyphClassName} />
+        <TopicGlyph topic={topic} className={glyphClassName ?? "size-5 md:size-4"} />
       </PopoverTrigger>
       <PopoverContent
         side="bottom"

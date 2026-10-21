@@ -54,6 +54,32 @@ export const TOPIC_ICONS = [
 ] as const
 export type TopicIcon = (typeof TOPIC_ICONS)[number]
 
+/** User-adjustable settings, stored server-side (they drive the cron). */
+export type Prefs = {
+  /** Local hour reminders go quiet (0-23). Equal to quietEnd = no quiet hours. */
+  quietStart: number
+  quietEnd: number
+  /** How often an overdue important task re-notifies. */
+  nagMinutes: number
+  digestEnabled: boolean
+  /** "HH:mm" local */
+  digestTime: string
+  mcpEnabled: boolean
+}
+
+export const DEFAULT_PREFS: Prefs = {
+  quietStart: 22,
+  quietEnd: 8,
+  nagMinutes: 60,
+  digestEnabled: true,
+  digestTime: "07:30",
+  mcpEnabled: true,
+}
+
+export const NAG_OPTIONS = [30, 60, 120, 240] as const
+
+export type SettingsResponse = Prefs & { timezone: string; mcpUrl: string; emailConfigured: boolean }
+
 export type TaskPatch = Partial<Omit<Task, "id" | "updatedAt">>
 export type TopicPatch = Partial<Omit<Topic, "id" | "updatedAt">>
 

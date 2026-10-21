@@ -1,9 +1,9 @@
 // Cloudflare Worker: serves /api/* (static app files are served by Workers Assets
 // without touching this code) and runs the reminder cron.
 
-import type { SyncOp } from "../shared/types"
+import type { SettingsResponse, SyncOp } from "../shared/types"
 import { checkSession, clearCookie, issueCookie, safeEqual } from "./auth"
-import { type Env, applyOps, changesSince, setSetting } from "./db"
+import { type Env, applyOps, changesSince, getMcpToken, getPrefs, getTimezone, setSetting, updatePrefs } from "./db"
 import { handleMcp } from "./mcp"
 import { pushAll } from "./push"
 import { runReminders } from "./reminders"
@@ -17,7 +17,10 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
   // MCP: the secret token in the URL is the credential (works as a claude.ai custom connector).
   if (path.startsWith("/api/mcp/")) {
     const token = path.slice("/api/mcp/".length)
-    if (!(await safeEqual(token, env.MCP_TOKEN, env.SESSION_SECRET))) return new Response("Not found", { status: 404 })
+    const [expected, prefs] = await Promise.all([getMcpToken(env), getPrefs(env)])
+    if (!prefs.mcpEnabled || !(await safeEqual(token, expected, env.SESSION_SECRET))) {
+      return new Response("Not found", { status: 404 })
+    }
     return handleMcp(req, env)
   }
 
@@ -49,9 +52,11 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
       await applyOps(env, ops)
       return json(await changesSince(env, Number(body.since ?? -1)), { headers })
     }
+    case "GET /api/settings":
+      return json(await settingsResponse(env, url), { headers })
     case "POST /api/settings": {
-      const body = await req.json<{ timezone?: string }>()
-      if (body.timezone) {
+      const body = await req.json<Record<string, unknown>>()
+      if (typeof body.timezone === "string") {
         try {
           new Intl.DateTimeFormat("en-US", { timeZone: body.timezone })
           await setSetting(env, "timezone", body.timezone)
@@ -59,7 +64,15 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
           return json({ error: "Bad time zone" }, { status: 400 })
         }
       }
-      return json({ ok: true }, { headers })
+      await updatePrefs(env, body)
+      return json(await settingsResponse(env, url), { headers })
+    }
+    // New secret MCP URL; the old one stops working immediately.
+    case "POST /api/mcp-token/rotate": {
+      const bytes = crypto.getRandomValues(new Uint8Array(24))
+      const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+      await setSetting(env, "mcp_token", token)
+      return json(await settingsResponse(env, url), { headers })
     }
     case "POST /api/push/subscribe": {
       const sub = await req.json<{ endpoint?: string; keys?: { p256dh?: string; auth?: string } }>()
@@ -95,6 +108,16 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     }
   }
   return json({ error: "Not found" }, { status: 404 })
+}
+
+async function settingsResponse(env: Env, url: URL): Promise<SettingsResponse> {
+  const [prefs, timezone, token] = await Promise.all([getPrefs(env), getTimezone(env), getMcpToken(env)])
+  return {
+    ...prefs,
+    timezone,
+    mcpUrl: `${url.origin}/api/mcp/${token}`,
+    emailConfigured: !!(env.RESEND_API_KEY && env.DIGEST_EMAIL),
+  }
 }
 
 export default {

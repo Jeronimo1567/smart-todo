@@ -1,20 +1,17 @@
 // Runs every minute from the cron trigger.
 //
-// Important tasks:  1 day, 3 h and 1 h before, at the due time, then every hour
-//                   while overdue (all-day tasks: 6 PM the day before, 9 AM, 3 PM, then hourly the next day).
+// Important tasks:  1 day, 3 h and 1 h before, at the due time, then every `nagMinutes`
+//                   while overdue (all-day tasks: 6 PM the day before, 9 AM, 3 PM, then repeating the next day).
 // Normal tasks:     once at the due time (all-day: 9 AM that day).
 // Snoozed tasks:    once when the snooze ends.
 // Nothing fires during quiet hours; a missed reminder fires once when they end.
-// Morning digest:   7:30 AM local, push + email (if Resend is configured).
+// Morning digest:   at `digestTime` local, push + email (if Resend is configured).
+// All of these are adjustable in Settings (see Prefs).
 
 import { DAY, HOUR, MINUTE, effectiveDue, formatLocal, localDateKey, localParts, startOfLocalDay } from "../shared/time"
-import { type Env, getSetting, getTimezone, rowToTask, rowToTopic, setSetting } from "./db"
+import { type Env, getPrefs, getSetting, getTimezone, isQuiet, rowToTask, rowToTopic, setSetting } from "./db"
 import { pushAll } from "./push"
-import type { Task } from "../shared/types"
-
-const QUIET_START = 22 // 10 PM
-const QUIET_END = 8 // 8 AM
-const DIGEST_AT = { h: 7, min: 30 }
+import type { Prefs, Task } from "../shared/types"
 
 type Row = Record<string, unknown>
 
@@ -34,13 +31,13 @@ export function reminderPoints(t: Task): number[] {
 }
 
 /** Latest reminder moment at or before `now`, or null. */
-export function latestPoint(t: Task, now: number): number | null {
+export function latestPoint(t: Task, now: number, every = HOUR): number | null {
   let best: number | null = null
   for (const p of reminderPoints(t)) if (p <= now && (best === null || p > best)) best = p
   if (t.important && t.dueAt !== null) {
     const eff = effectiveDue(t.dueAt, t.allDay)
-    if (now >= eff + HOUR) {
-      const p = eff + Math.floor((now - eff) / HOUR) * HOUR
+    if (now >= eff + every) {
+      const p = eff + Math.floor((now - eff) / every) * every
       if (best === null || p > best) best = p
     }
   }
@@ -67,10 +64,10 @@ function relative(t: Task, now: number, tz: string) {
 export async function runReminders(env: Env, now = Date.now()) {
   const tz = await getTimezone(env)
   const local = localParts(now, tz)
-  const quiet = local.h >= QUIET_START || local.h < QUIET_END
+  const prefs = await getPrefs(env)
 
-  await maybeDigest(env, now, tz, local)
-  if (quiet) return
+  await maybeDigest(env, now, tz, local, prefs)
+  if (isQuiet(prefs, local.h)) return
 
   const { results } = await env.DB.prepare(
     `SELECT * FROM tasks WHERE deleted = 0 AND done_at IS NULL
@@ -94,7 +91,7 @@ export async function runReminders(env: Env, now = Date.now()) {
   for (const r of results) {
     const t = rowToTask(r)
     if (t.snoozedUntil && t.snoozedUntil > now) continue
-    const p = latestPoint(t, now)
+    const p = latestPoint(t, now, prefs.nagMinutes * MINUTE)
     const since = Math.max((r.last_nagged_at as number) ?? 0, t.createdAt)
     if (p === null || p <= since) continue
     const where = t.topicId ? topicName[t.topicId] : null
@@ -114,8 +111,10 @@ export async function runReminders(env: Env, now = Date.now()) {
   }
 }
 
-async function maybeDigest(env: Env, now: number, tz: string, local: { h: number; min: number }) {
-  if (local.h * 60 + local.min < DIGEST_AT.h * 60 + DIGEST_AT.min) return
+async function maybeDigest(env: Env, now: number, tz: string, local: { h: number; min: number }, prefs: Prefs) {
+  if (!prefs.digestEnabled) return
+  const [dh, dm] = prefs.digestTime.split(":").map(Number)
+  if (local.h * 60 + local.min < dh * 60 + dm) return
   const today = localDateKey(now, tz)
   if ((await getSetting(env, "last_digest")) === today) return
   await setSetting(env, "last_digest", today)

@@ -196,6 +196,16 @@ export async function login(password: string) {
   return true
 }
 
+/** Sign out this device and forget its local copy. */
+export async function logout() {
+  await sync() // don't lose unsynced edits
+  await fetch("/api/logout", { method: "POST" }).catch(() => {})
+  try {
+    for (const k of Object.keys(localStorage)) if (k.startsWith("todo:")) localStorage.removeItem(k)
+  } catch {}
+  location.reload()
+}
+
 // ---------- React binding ----------
 
 let started = false

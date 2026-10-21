@@ -31,17 +31,19 @@ export const TaskRow = memo(function TaskRow({
 }) {
   const done = !!task.doneAt
   return (
-    <div className="group flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/60">
+    <div className="group flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-muted/60 md:py-2">
       <Checkbox
         checked={done}
         onCheckedChange={(v) => saveTask(task.id, { doneAt: v ? Date.now() : null })}
-        className="size-5 rounded-full"
+        className="size-6 rounded-full md:size-5"
         aria-label={done ? "Mark not done" : "Mark done"}
       />
       <button onClick={() => onOpen(task.id)} className="flex min-w-0 flex-1 flex-col gap-0.5 py-0.5 text-left">
-        <span className={cn("truncate text-sm", done && "text-muted-foreground line-through")}>{task.title}</span>
+        <span className={cn("truncate text-base md:text-sm", done && "text-muted-foreground line-through")}>
+          {task.title}
+        </span>
         {(topic || task.notes) && (
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground md:text-xs">
             {topic && (
               <>
                 <TopicGlyph topic={topic} className="size-3" />
