@@ -5,8 +5,8 @@ import {
   BellRingIcon,
   CalendarIcon,
   InboxIcon,
-  PanelLeftCloseIcon,
   MoonIcon,
+  PanelLeftCloseIcon,
   PlusIcon,
   SunIcon,
   SunMediumIcon,
@@ -24,6 +24,15 @@ import { cn } from "@/lib/utils"
 import { TOPIC_COLORS, type Topic } from "@/shared/types"
 
 export type View = "today" | "upcoming" | "all" | `topic:${string}`
+
+// Every row has the same geometry in both states (p-2 container, px-3 row, 16px icon box),
+// so collapsing only hides labels: icons never move. Rail width = 8 + 12 + 16 + 12 + 8 = 56px.
+const ROW =
+  "relative flex h-9 w-full shrink-0 items-center gap-3 rounded-md px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+
+function IconBox({ children }: { children: React.ReactNode }) {
+  return <span className="flex size-4 shrink-0 items-center justify-center">{children}</span>
+}
 
 export function Sidebar({
   view,
@@ -68,58 +77,54 @@ export function Sidebar({
       key={v}
       onClick={() => onSelect(v)}
       title={collapsed ? label : undefined}
-      aria-label={collapsed ? label : undefined}
-      className={cn(
-        "relative flex h-9 w-full shrink-0 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground",
-        collapsed && "justify-center px-0",
-        view === v && "bg-muted font-medium text-foreground"
-      )}
+      aria-label={label}
+      className={cn(ROW, view === v && "bg-muted font-medium text-foreground")}
     >
-      {icon}
-      {collapsed ? (
-        alert && <span className="absolute top-1.5 right-2 size-1.5 rounded-full bg-destructive" />
-      ) : (
-        <span className="truncate">{label}</span>
-      )}
+      <IconBox>{icon}</IconBox>
+      {!collapsed && <span className="truncate">{label}</span>}
       {!collapsed && count ? (
         <span className={cn("ml-auto text-xs tabular-nums", alert ? "font-medium text-destructive" : "text-muted-foreground")}>
           {count}
         </span>
       ) : null}
+      {collapsed && alert && <span className="absolute top-1.5 left-7 size-1.5 rounded-full bg-destructive" />}
     </button>
   )
 
   return (
-    <div className={cn("flex h-full flex-col gap-0.5", collapsed ? "items-center p-2" : "p-3")}>
-      {collapsed ? (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="mb-3 shrink-0"
-          onClick={onToggle}
-          aria-label="Show sidebar"
-          title="Show sidebar (⌘B)"
-        >
-          <Logo />
-        </Button>
-      ) : (
-        <div className="mb-3 flex h-9 items-center gap-1.5 pl-2 text-sm font-semibold">
-          <Logo />
-          <span className="truncate">MCP Enabled Todo List</span>
-          {onToggle && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="ml-auto shrink-0 text-muted-foreground"
-              onClick={onToggle}
-              aria-label="Hide sidebar"
-              title="Hide sidebar (⌘B)"
-            >
-              <PanelLeftCloseIcon />
-            </Button>
-          )}
-        </div>
-      )}
+    <div className="flex h-full w-full flex-col gap-0.5 overflow-hidden p-2">
+      <div className="mb-2 flex h-9 shrink-0 items-center">
+        {collapsed ? (
+          <button
+            onClick={onToggle}
+            className={cn(ROW, "px-2.5")}
+            aria-label="Show sidebar"
+            title="Show sidebar (⌘B)"
+          >
+            <Logo />
+          </button>
+        ) : (
+          <>
+            <span className="flex min-w-0 items-center gap-2.5 px-2.5 text-sm font-semibold">
+              <Logo />
+              <span className="truncate">MCP Enabled Todo List</span>
+            </span>
+            {onToggle && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="ml-auto shrink-0 text-muted-foreground"
+                onClick={onToggle}
+                aria-label="Hide sidebar"
+                title="Hide sidebar (⌘B)"
+              >
+                <PanelLeftCloseIcon />
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+
       {item("today", <SunIcon className="size-4" />, "Today", counts.today, counts.overdue > 0)}
       {item("upcoming", <CalendarIcon className="size-4" />, "Upcoming")}
       {item("all", <InboxIcon className="size-4" />, "All tasks")}
@@ -128,7 +133,7 @@ export function Sidebar({
         {topics.map((t) =>
           item(
             `topic:${t.id}`,
-            <span className={cn("mx-1 size-2 shrink-0 rounded-full", DOT[t.color])} />,
+            <span className={cn("size-2 rounded-full", DOT[t.color])} />,
             t.name,
             counts.byTopic[t.id]
           )
@@ -154,19 +159,19 @@ export function Sidebar({
             }}
             title={collapsed ? "New topic" : undefined}
             aria-label="New topic"
-            className={cn(
-              "flex h-9 shrink-0 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground",
-              collapsed && "justify-center px-0"
-            )}
+            className={ROW}
           >
-            <PlusIcon className="size-4" />
+            <IconBox>
+              <PlusIcon className="size-4" />
+            </IconBox>
             {!collapsed && "New topic"}
           </button>
         )}
       </div>
-      <div className={cn("mt-auto flex gap-1 pt-3", collapsed ? "flex-col items-center" : "w-full items-center")}>
-        <ReminderToggle compact={collapsed} />
-        <ThemeToggle className={collapsed ? undefined : "ml-auto"} />
+
+      <div className="mt-auto flex w-full flex-col gap-0.5 pt-2">
+        <ReminderToggle collapsed={collapsed} />
+        <ThemeToggle collapsed={collapsed} />
       </div>
     </div>
   )
@@ -177,19 +182,23 @@ export function Logo({ className }: { className?: string }) {
   return <img src="/logo.png" alt="" width={20} height={20} className={cn("size-5 shrink-0", className)} />
 }
 
-function ThemeToggle({ className }: { className?: string }) {
+function ThemeToggle({ collapsed }: { collapsed: boolean }) {
   const { resolvedTheme, setTheme } = useTheme()
+  const dark = resolvedTheme === "dark"
+  const label = dark ? "Light mode" : "Dark mode"
   return (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      className={cn("text-muted-foreground", className)}
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      aria-label="Toggle dark mode"
+    <button
+      className={ROW}
+      onClick={() => setTheme(dark ? "light" : "dark")}
+      aria-label={label}
+      title={collapsed ? label : undefined}
     >
-      <SunMediumIcon className="hidden dark:block" />
-      <MoonIcon className="dark:hidden" />
-    </Button>
+      <IconBox>
+        <SunMediumIcon className="hidden size-4 dark:block" />
+        <MoonIcon className="size-4 dark:hidden" />
+      </IconBox>
+      {!collapsed && <span className="truncate">{label}</span>}
+    </button>
   )
 }
 
@@ -201,30 +210,25 @@ const PUSH_LABEL: Record<PushState, string> = {
   "needs-install": "Add to Home Screen for reminders",
 }
 
-function ReminderToggle({ compact }: { compact?: boolean }) {
+const PUSH_HINT: Partial<Record<PushState, string>> = {
+  "needs-install": "On iPhone: tap Share → Add to Home Screen, then open the app from there.",
+  denied: "Allow notifications for this site in your browser settings.",
+}
+
+function ReminderToggle({ collapsed }: { collapsed: boolean }) {
   const [state, setState] = useState<PushState | null>(null)
   const [busy, setBusy] = useState(false)
   useEffect(() => {
     getPushState().then(setState)
   }, [])
-  if (!state) return null
+  if (!state) return <div className="h-9 shrink-0" />
   const on = state === "on"
   return (
-    <Button
-      variant="ghost"
-      size={compact ? "icon-sm" : "sm"}
+    <button
       disabled={busy || state === "unsupported"}
-      className={cn("min-w-0 justify-start text-xs", on ? "text-muted-foreground" : "text-amber-700 dark:text-amber-400")}
+      className={cn(ROW, "disabled:opacity-50", !on && "text-amber-700 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-400")}
       aria-label={PUSH_LABEL[state]}
-      title={
-        state === "needs-install"
-          ? "On iPhone: tap Share → Add to Home Screen, then open the app from there."
-          : state === "denied"
-            ? "Allow notifications for this site in your browser settings."
-            : compact
-              ? PUSH_LABEL[state]
-              : undefined
-      }
+      title={PUSH_HINT[state] ?? (collapsed ? PUSH_LABEL[state] : undefined)}
       onClick={async () => {
         if (state !== "on" && state !== "off") return
         setBusy(true)
@@ -235,8 +239,8 @@ function ReminderToggle({ compact }: { compact?: boolean }) {
         }
       }}
     >
-      {on ? <BellRingIcon /> : <BellOffIcon />}
-      {!compact && <span className="truncate">{PUSH_LABEL[state]}</span>}
-    </Button>
+      <IconBox>{on ? <BellRingIcon className="size-4" /> : <BellOffIcon className="size-4" />}</IconBox>
+      {!collapsed && <span className="truncate text-xs">{PUSH_LABEL[state]}</span>}
+    </button>
   )
 }
