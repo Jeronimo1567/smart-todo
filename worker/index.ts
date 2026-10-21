@@ -8,6 +8,18 @@ import { handleMcp } from "./mcp"
 import { pushAll } from "./push"
 import { runReminders } from "./reminders"
 
+/** Forgive common copy/paste mix-ups: "Bearer Bearer x", quotes, or the whole connector URL. */
+function normalizeToken(t: string) {
+  let v = t.trim().replace(/^["']|["']$/g, "")
+  while (/^bearer\s+/i.test(v)) v = v.replace(/^bearer\s+/i, "")
+  const m = v.match(/\/api\/mcp\/([^/?#\s]+)/)
+  if (m) v = m[1]
+  try {
+    v = decodeURIComponent(v)
+  } catch {}
+  return v.trim()
+}
+
 // MCP clients may run in a browser; the token (not cookies) is the credential, so any origin is fine.
 const MCP_CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -33,12 +45,26 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
       fromPath = decodeURIComponent(fromPath).trim()
     } catch {}
     const fromHeader = req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? req.headers.get("X-API-Key")?.trim()
-    const fromQuery = url.searchParams.get("token")?.trim()
-    const candidates = [fromPath, fromHeader, fromQuery].filter((t): t is string => !!t)
+    const fromQuery = ["token", "api_key", "apiKey", "key", "access_token"]
+      .map((k) => url.searchParams.get(k)?.trim())
+      .find(Boolean)
+    const candidates = [fromPath, fromHeader, fromQuery].filter((t): t is string => !!t).map(normalizeToken)
     const [expected, prefs] = await Promise.all([getMcpToken(env), getPrefs(env)])
     let ok = false
     for (const t of candidates) if (await safeEqual(t, expected, env.SESSION_SECRET)) ok = true
     if (!prefs.mcpEnabled || !ok) {
+      // Safe diagnostics (never the token itself) to debug clients that send the wrong value.
+      console.log("mcp auth rejected", {
+        enabled: prefs.mcpEnabled,
+        sources: { path: !!fromPath, header: !!fromHeader, query: !!fromQuery },
+        candidates: candidates.map((t) => ({
+          len: t.length,
+          expectedLen: expected.length,
+          hasPercent: t.includes("%"),
+          hasBraces: /[{}<>$]/.test(t),
+          hasSpace: /\s/.test(t),
+        })),
+      })
       return fromHeader || !fromPath
         ? Response.json(
             { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Missing or invalid token" } },
