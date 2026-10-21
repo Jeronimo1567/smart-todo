@@ -2,7 +2,17 @@
 
 A deliberately simple, fast todo list split into topics (any lists you like) that nags you about important deadlines and that you can talk to through Claude (MCP).
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/all-tasks-dark.png">
+  <img alt="All tasks view: tasks grouped by topic (Personal, Work, School, Fitness) with due-date chips, an overdue item in red, and bells on important tasks" src="docs/screenshots/all-tasks-light.png">
+</picture>
+
+<p align="center">
+  <img alt="Today view on a phone" src="docs/screenshots/today-mobile.png" width="280">
+</p>
+
 - **Fast**: local-first. Your list lives on the device and every tap updates instantly. Changes sync in the background to a Cloudflare Worker + D1 at the edge, so API calls take a few ms.
+- **Today, Upcoming, All tasks**: overdue items float to the top in red, and each topic gets its own color and icon.
 - **Smart quick add**: `report #personal fri 5pm !` → Personal, Friday 5 PM, important. Understands `today`, `tmr`, weekdays, `oct 30`, `11/1`, `in 2 weeks`, `at 7`, `noon`, `#topic`, `!`.
 - **Reminders that bug you**: push notifications on phone and desktop. Important tasks ping 1 day, 3 h and 1 h before, at the due time, then **every hour while overdue** until you tick them off or hit *Snooze 1h* (quiet hours 10 PM – 8 AM by default). Normal tasks ping once. Every morning at 7:30 you get a digest push (plus an email if configured).
 - **Stays signed in**: one password, once per device; the session renews itself.
@@ -45,7 +55,7 @@ shared/            types + time-zone helpers used by both sides
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars   # fill in values
+# create .dev.vars with APP_PASSWORD, SESSION_SECRET, MCP_TOKEN, VAPID_PRIVATE_JWK (see Deploy)
 npm run build && npm run dev:api # full app on http://localhost:8790
 npm run dev                      # optional: hot-reload UI on :3000, proxies /api to :8790
 ```
