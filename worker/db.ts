@@ -12,6 +12,8 @@ export type Env = {
   DEFAULT_TIMEZONE: string
   RESEND_API_KEY?: string
   DIGEST_EMAIL?: string
+  /** Optional: lets Claude write the Today brief. */
+  ANTHROPIC_API_KEY?: string
 }
 
 type Row = Record<string, unknown>

@@ -2,6 +2,7 @@
 // without touching this code) and runs the reminder cron.
 
 import type { SettingsResponse, SyncOp } from "../shared/types"
+import { writeBrief } from "./brief"
 import { checkSession, clearCookie, issueCookie, safeEqual } from "./auth"
 import {
   type Env,
@@ -186,6 +187,12 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     case "POST /api/push/test": {
       const sent = await pushAll(env, { title: "Reminders are on", body: "This is how important tasks will bug you.", tag: "test" })
       return json({ sent }, { headers })
+    }
+    // Prose summary of the day for the Today screen (the app falls back to its own wording).
+    case "POST /api/brief": {
+      const result = await writeBrief(env, await req.json())
+      if ("brief" in result) return json(result, { headers })
+      return json(result, { status: result.error === "not_configured" ? 503 : 502, headers })
     }
     // Buttons on a notification ("Done", "Snooze 1h"), called from the service worker.
     case "POST /api/action": {

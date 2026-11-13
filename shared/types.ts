@@ -104,3 +104,28 @@ export type SyncResponse = {
 
 export const VAPID_PUBLIC_KEY =
   "BBRm3w5fg1U-rfqekkfYSRaZREX7rqLbyV5WDZh1UzDxHuMcQG2r8CTvHCW-vmX6cLNcfj0ghixRnOCqqu_zRy0"
+
+// ---------- daily brief (the prose "Today" screen) ----------
+
+/** Emphasis is marked with **double asterisks** (task names, time words). */
+export type Brief = {
+  /** One line under the greeting, e.g. "Nothing urgent today, you're in a good place." */
+  status: string
+  paragraphs: string[]
+  closing: string
+}
+
+export type BriefItem = { title: string; due: string; topic?: string; important?: boolean; notes?: string }
+
+/** What the app sends to POST /api/brief: the open tasks worth mentioning, already in local time. */
+export type BriefRequest = {
+  /** e.g. "Friday, November 13" */
+  date: string
+  partOfDay: "morning" | "afternoon" | "evening"
+  overdue: BriefItem[]
+  today: BriefItem[]
+  /** Next 7 days after today. */
+  upcoming: BriefItem[]
+  /** Totals (the lists above are capped). */
+  counts: { overdue: number; today: number; upcoming: number; undated: number; doneToday: number }
+}

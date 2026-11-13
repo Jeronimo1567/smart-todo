@@ -12,6 +12,7 @@ A deliberately simple, fast todo list split into topics (any lists you like) tha
 </p>
 
 - **Fast**: local-first. Your list lives on the device and every tap updates instantly. Changes sync in the background to a Cloudflare Worker + D1 at the edge, so API calls take a few ms.
+- **Today reads like a note, not a list**: a few calm sentences about what's due, what's overdue and what's coming up, with a *Listen* button to hear it. One tap switches to the regular checklist. Written by Claude when `ANTHROPIC_API_KEY` is set, otherwise by the app itself.
 - **Today, Upcoming, All tasks**: overdue items float to the top in red, and each topic gets its own color and icon.
 - **Smart quick add**: `report #personal fri 5pm !` → Personal, Friday 5 PM, important. Understands `today`, `tmr`, weekdays, `oct 30`, `11/1`, `in 2 weeks`, `at 7`, `noon`, `#topic`, `!`.
 - **Reminders that bug you**: push notifications on phone and desktop. Important tasks ping 1 day, 3 h and 1 h before, at the due time, then **every hour while overdue** until you tick them off or hit *Snooze 1h* (quiet hours 10 PM – 8 AM by default). Normal tasks ping once. Every morning at 7:30 you get a digest push (plus an email if configured).
@@ -68,4 +69,4 @@ Trigger the reminder cron locally: `curl http://localhost:8790/cdn-cgi/local/sch
 npm run deploy   # next build → D1 migrations → wrangler deploy
 ```
 
-Secrets (set once): `APP_PASSWORD`, `SESSION_SECRET`, `MCP_TOKEN`, `VAPID_PRIVATE_JWK`, and optionally `RESEND_API_KEY` + `DIGEST_EMAIL`, via `npx wrangler secret put NAME`.
+Secrets (set once): `APP_PASSWORD`, `SESSION_SECRET`, `MCP_TOKEN`, `VAPID_PRIVATE_JWK`, and optionally `RESEND_API_KEY` + `DIGEST_EMAIL` (email digest) and `ANTHROPIC_API_KEY` (Claude writes the Today summary), via `npx wrangler secret put NAME`.
