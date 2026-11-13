@@ -1,10 +1,12 @@
 // The prose "Today" brief: turns the day's tasks into a few calm sentences with Claude.
-// Optional: without ANTHROPIC_API_KEY the app writes a simpler brief on the device.
+// Uses the same Claude key and model as Clippy (Settings → Clippy, or the ANTHROPIC_API_KEY secret).
+// Without a key the app writes a simpler brief on the device.
 
 import Anthropic from "@anthropic-ai/sdk"
 
 import type { Brief, BriefItem, BriefRequest } from "../shared/types"
-import type { Env } from "./db"
+import { MODEL } from "./ai"
+import { type Env, getAnthropicKey } from "./db"
 
 const SYSTEM = `You write the brief that opens a personal todo app: a few short, calm sentences telling one person what their day looks like, the way a thoughtful assistant would say it out loud.
 
@@ -67,17 +69,15 @@ function clean(body: Partial<BriefRequest>): BriefRequest {
 export type BriefResult = { brief: Brief } | { error: "not_configured" | "failed" }
 
 export async function writeBrief(env: Env, body: Partial<BriefRequest>): Promise<BriefResult> {
-  if (!env.ANTHROPIC_API_KEY) return { error: "not_configured" }
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, timeout: 30_000, maxRetries: 1 })
+  const apiKey = await getAnthropicKey(env)
+  if (!apiKey) return { error: "not_configured" }
+  const client = new Anthropic({ apiKey, timeout: 30_000, maxRetries: 1 })
   try {
-    const res = await client.beta.messages.create({
-      model: "claude-opus-5-5",
-      max_tokens: 4000,
+    const res = await client.messages.create({
+      model: MODEL,
+      max_tokens: 2000,
       // A short summary: keep it quick.
       output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
-      // If the model declines, let the API retry on its default fallback instead of failing.
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
       system: SYSTEM,
       messages: [{ role: "user", content: JSON.stringify(clean(body)) }],
     })
@@ -91,7 +91,7 @@ export async function writeBrief(env: Env, body: Partial<BriefRequest>): Promise
     if (typeof out.status !== "string" || typeof out.closing !== "string" || !paragraphs.length) return { error: "failed" }
     return { brief: { status: out.status, paragraphs: paragraphs.slice(0, 6), closing: out.closing } }
   } catch (e) {
-    if (e instanceof Anthropic.AuthenticationError) console.error("brief: ANTHROPIC_API_KEY was rejected")
+    if (e instanceof Anthropic.AuthenticationError) console.error("brief: the Claude API key was rejected")
     else if (e instanceof Anthropic.RateLimitError) console.error("brief: rate limited")
     else if (e instanceof Anthropic.APIError) console.error("brief: API error", e.status, e.message)
     else console.error("brief:", e)

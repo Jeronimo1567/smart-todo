@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import type { Task, Topic } from "@/shared/types"
 
 import { BriefView, TodayBar, type TodayMode, useSpeech } from "./brief"
+import { Clippy } from "./clippy"
 import { Login } from "./login"
 import { AddTaskRow, QuickAdd } from "./quick-add"
 import { SettingsDialog } from "./settings-dialog"
@@ -285,7 +286,8 @@ export function TodoApp() {
         )}
         <div
           className={cn(
-            "flex-1 overflow-y-auto px-2 pb-[max(env(safe-area-inset-bottom),1.5rem)] md:px-6 md:pb-6",
+            // Room at the bottom so Clippy never covers the last row.
+            "flex-1 overflow-y-auto px-2 pb-[calc(max(env(safe-area-inset-bottom),1rem)+5rem)] md:px-6 md:pb-24",
             brief && "hidden"
           )}
         >
@@ -359,6 +361,7 @@ export function TodoApp() {
         )}
       </main>
 
+      <Clippy open={open} topics={topics} now={now} enabled={hydrated && authed === true} raised={view === "today"} />
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <TaskDialog task={openId ? (taskMap[openId] ?? null) : null} topics={topics} onClose={() => setOpenId(null)} />
       <TopicDialog

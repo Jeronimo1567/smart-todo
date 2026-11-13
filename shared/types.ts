@@ -86,7 +86,13 @@ export type SettingsResponse = Prefs & {
   mcpUrl: string
   mcpApps: McpApp[]
   emailConfigured: boolean
+  /** Where Clippy's Claude API key comes from, and its last 4 characters (never the key itself). */
+  claudeKey: { source: "settings" | "secret"; last4: string } | null
 }
+
+/** A task Clippy (the AI helper) proposes; ids are made on the device. */
+export type AiTask = Pick<Task, "title" | "topicId" | "dueAt" | "allDay" | "important" | "notes">
+export type AiResponse = { message: string; tasks: AiTask[] }
 
 export type TaskPatch = Partial<Omit<Task, "id" | "updatedAt">>
 export type TopicPatch = Partial<Omit<Topic, "id" | "updatedAt">>
