@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronRightIcon, MenuIcon, PencilIcon } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
@@ -12,6 +12,8 @@ import { saveTask, useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import type { Task, Topic } from "@/shared/types"
 
+import { BriefView, TodayBar, type TodayMode, useSpeech } from "./brief"
+import { Clippy } from "./clippy"
 import { Login } from "./login"
 import { AddTaskRow, QuickAdd } from "./quick-add"
 import { SettingsDialog } from "./settings-dialog"
@@ -83,6 +85,11 @@ function ClearCompleted({ tasks }: { tasks: Task[] }) {
 export function TodoApp() {
   const { tasks: taskMap, topics: topicMap, authed, hydrated } = useStore()
   const [view, setView] = usePref<View>("todo:view", "today")
+  // Today opens as a written summary; the list is one tap away.
+  const [todayMode, setTodayMode] = usePref<TodayMode>("todo:today-mode", "brief")
+  const { speaking, toggle: toggleSpeech } = useSpeech()
+  const speechText = useRef("")
+  const setSpeechText = useCallback((t: string) => void (speechText.current = t), [])
   const [collapsed, setCollapsed] = usePref<"0" | "1">("todo:sidebar-collapsed", "0")
   const toggleSidebar = useCallback(() => setCollapsed(collapsed === "1" ? "0" : "1"), [collapsed, setCollapsed])
   // Cmd/Ctrl+B toggles the sidebar on desktop.
@@ -184,6 +191,7 @@ export function TodoApp() {
   const onOpen = useCallback((id: string) => setOpenId(id), [])
   const select = useCallback(
     (v: View) => {
+      window.speechSynthesis?.cancel()
       setView(v)
       setMenuOpen(false)
       setShowDone(false)
@@ -200,6 +208,7 @@ export function TodoApp() {
     setSettingsOpen(true)
   }
   const isCollapsed = collapsed === "1"
+  const brief = view === "today" && todayMode === "brief"
 
   return (
     <div className="flex h-dvh">
@@ -249,7 +258,7 @@ export function TodoApp() {
                 glyphClassName="size-5"
               />
             )}
-            <span className="truncate">{title}</span>
+            <span className={cn("truncate", brief && "sr-only")}>{title}</span>
           </h1>
           {activeTopic && (
             <Button
@@ -268,7 +277,20 @@ export function TodoApp() {
           <QuickAdd {...addProps} className="mb-3" />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 pb-[max(env(safe-area-inset-bottom),1.5rem)] md:px-6 md:pb-6">
+        {brief && (
+          <div className="flex-1 overflow-y-auto">
+            {hydrated && (
+              <BriefView open={open} all={all} topics={topicById} now={now} speaking={speaking} onSpeech={setSpeechText} />
+            )}
+          </div>
+        )}
+        <div
+          className={cn(
+            // Room at the bottom so Clippy never covers the last row.
+            "flex-1 overflow-y-auto px-2 pb-[calc(max(env(safe-area-inset-bottom),1rem)+5rem)] md:px-6 md:pb-24",
+            brief && "hidden"
+          )}
+        >
           {hydrated && empty && (
             <p className="hidden px-3 py-10 text-center text-sm text-muted-foreground md:block">
               {view === "today" ? "Nothing due today. Nice." : done.length ? "All done." : "No tasks here yet."}
@@ -325,8 +347,21 @@ export function TodoApp() {
           )}
         </div>
 
+        {view === "today" && (
+          <TodayBar
+            mode={todayMode}
+            onMode={(m) => {
+              if (speaking) toggleSpeech("")
+              setTodayMode(m)
+            }}
+            onOpenSettings={openSettings}
+            speaking={speaking}
+            onListen={() => toggleSpeech(speechText.current)}
+          />
+        )}
       </main>
 
+      <Clippy open={open} topics={topics} now={now} enabled={hydrated && authed === true} raised={view === "today"} />
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <TaskDialog task={openId ? (taskMap[openId] ?? null) : null} topics={topics} onClose={() => setOpenId(null)} />
       <TopicDialog

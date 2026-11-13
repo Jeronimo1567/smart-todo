@@ -12,6 +12,7 @@ export type Env = {
   DEFAULT_TIMEZONE: string
   RESEND_API_KEY?: string
   DIGEST_EMAIL?: string
+  ANTHROPIC_API_KEY?: string
 }
 
 type Row = Record<string, unknown>
@@ -158,6 +159,11 @@ export async function updatePrefs(env: Env, patch: Record<string, unknown>) {
 /** The MCP token can be rotated from Settings; the deploy-time secret is the fallback. */
 export async function getMcpToken(env: Env) {
   return (await getSetting(env, "mcp_token")) ?? env.MCP_TOKEN
+}
+
+/** Claude API key for Clippy: pasted in Settings, or the deploy-time secret as a fallback. */
+export async function getAnthropicKey(env: Env) {
+  return (await getSetting(env, "anthropic_api_key")) ?? env.ANTHROPIC_API_KEY ?? null
 }
 
 export type StoredMcpApp = { id: string; label: string; token: string; createdAt: number }

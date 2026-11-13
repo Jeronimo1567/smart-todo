@@ -9,3 +9,4 @@
 - Schema changes: add a new file in `migrations/` (never edit applied ones).
 - Checks: `npm run typecheck && npm run lint && npm run build`.
 - Deploy: `npm run deploy` (needs `wrangler login`). Secrets via `npx wrangler secret put`.
+- Today brief: `lib/brief.ts` writes a local version instantly; `POST /api/brief` (`worker/brief.ts`) upgrades it using the same Claude key and model as Clippy (`worker/ai.ts`, key from Settings or `ANTHROPIC_API_KEY`). The brief must always work without the API.
